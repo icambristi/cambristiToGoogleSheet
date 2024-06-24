@@ -1,0 +1,8 @@
+services:
+  wixgooglesheet:
+    image: xmayeur/wixgooglesheet
+    container_name: wixgooglesheet
+    restart: always
+    volumes:
+      - /root/.config/.vault:/root/.config/.vault
+      - /root/.ssl:/root/.ssl
