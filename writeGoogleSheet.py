@@ -2,9 +2,12 @@ import datetime
 import hashlib
 import json
 import logging
+import sys
 import uuid
 
 import gspread
+import influxdb_client
+import jsonpath_ng.ext as jp
 import pandas as pd
 import requests
 from oauth2client.service_account import ServiceAccountCredentials
@@ -179,6 +182,89 @@ def upd_members_plans_to_google_sheet():
         log('error', 'Upload to Google sheet error ' + str(resp.status_code))
 
 
+def upd_logs_google_sheet():
+    cfg = get_secret('InfluxDbApiToken')
+    bucket = cfg['bucket']
+    db_token = cfg['token']
+    org = cfg['org']
+    db_url = cfg['url']
+    client = None
+
+    try:
+        client = influxdb_client.InfluxDBClient(url=db_url, token=db_token, org=org)
+    except Exception as e:
+        logging.error(f'client {str(e)}')
+        sys.exit(1)
+
+    query_api = client.query_api()
+
+    query = """from(bucket: "cambristi")
+     |> range(start: -2d)
+     |> filter(fn: (r) => r._measurement == "Cambristi Production")
+     |> sort(columns: ["_time"], desc: true) """
+    tables = query_api.query(query, org="Home")
+
+    all_rows = [['timestamp', 'severity', 'module', 'msg']]
+    for table in tables:
+        for record in table.records:
+            rec = json.loads(record.get_value())
+
+            q = jp.parse('jsonPayload.message')
+            for match in q.find(rec):
+                msg = match.value
+                if msg[0] == '[' or msg[0] == "{":
+                    try:
+                        msg = json.loads(msg)
+                    except Exception as e:
+                        continue
+
+                if 'Running the code for' in msg:
+                    continue
+
+                hdr = ""
+                if isinstance(msg, list) and len(msg) == 1:
+                    hdr = msg[0]
+
+                module = ""
+                severity = ""
+
+                if isinstance(hdr, dict) and 'module' in hdr:
+                    module = hdr['module']
+                if 'sourceLocation' in rec:
+                    module = rec['sourceLocation']['file'] + ":" + str(rec['sourceLocation']['line']) + "in " + module
+
+                if isinstance(hdr, dict) and 'severity' in hdr:
+                    severity = hdr['severity']
+
+                if len(msg) == 1 and isinstance(msg[0], dict):
+                    if 'message' in msg[0]:
+                        msg = msg[0]['message']
+
+                    if 'event' in msg[0]:
+                        msg += " event:" + msg[0]['event']
+
+                row = [rec['timestamp'], severity, module, str(msg)[:512]]
+                all_rows.append(row)
+
+    scope = ['https://www.googleapis.com/auth/spreadsheets',
+             'https://spreadsheets.google.com/feeds',
+             'https://www.googleapis.com/auth/drive']
+
+    #
+    _, sa = get_secret("cambristiGoogleServiceAccount")
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(json.loads(sa), scope)
+    gc = gspread.authorize(creds)
+
+    _, spreadsheet_id = get_secret("cambristiLogSheetID")
+    sh = gc.open_by_key(spreadsheet_id)
+    ws = sh.sheet1
+
+    ws.clear()
+    ws.update(range_name="A1", values=all_rows)
+    log('info', 'Logs updated to Google Sheet')
+
+
 if __name__ == '__main__':
-    upd_members_db_to_google_sheet()
-    upd_members_plans_to_google_sheet()
+    # upd_members_db_to_google_sheet()
+    # upd_members_plans_to_google_sheet()
+    upd_logs_google_sheet()

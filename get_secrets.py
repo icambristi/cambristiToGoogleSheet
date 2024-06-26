@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s',
                     datefmt='%m/%d/%Y %I:%M:%S %p')
 
 
-def get_secret(id: str) -> tuple:
+def get_secret(id: str):
     """
     :param id: The ID of the secret to retrieve
     :return: A tuple containing the key-value pairs of the secret or a json object for complex secrets
