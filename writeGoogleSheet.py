@@ -231,19 +231,20 @@ def upd_logs_google_sheet():
                 if isinstance(hdr, dict) and 'module' in hdr:
                     module = hdr['module']
                 if 'sourceLocation' in rec:
-                    module = rec['sourceLocation']['file'] + ":" + str(rec['sourceLocation']['line']) + "in " + module
+                    module = rec['sourceLocation']['file'] + ":" + str(rec['sourceLocation']['line']) + " in " + module
 
                 if isinstance(hdr, dict) and 'severity' in hdr:
                     severity = hdr['severity']
 
+                _msg = msg
                 if len(msg) == 1 and isinstance(msg[0], dict):
                     if 'message' in msg[0]:
-                        msg = msg[0]['message']
+                        _msg = msg[0]['message']
 
                     if 'event' in msg[0]:
-                        msg += " event:" + msg[0]['event']
+                        _msg += " event:" + str(msg[0]['event'])
 
-                row = [rec['timestamp'], severity, module, str(msg)[:512]]
+                row = [rec['timestamp'], severity, module, str(_msg)[:512]]
                 all_rows.append(row)
 
     scope = ['https://www.googleapis.com/auth/spreadsheets',
@@ -265,6 +266,7 @@ def upd_logs_google_sheet():
 
 
 if __name__ == '__main__':
-    # upd_members_db_to_google_sheet()
-    # upd_members_plans_to_google_sheet()
+    if len(sys.argv) == 0:
+        upd_members_db_to_google_sheet()
+        upd_members_plans_to_google_sheet()
     upd_logs_google_sheet()
