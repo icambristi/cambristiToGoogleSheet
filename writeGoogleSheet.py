@@ -10,9 +10,8 @@ import influxdb_client
 import jsonpath_ng.ext as jp
 import pandas as pd
 import requests
-from oauth2client.service_account import ServiceAccountCredentials
-
 from get_secrets import get_secret
+from oauth2client.service_account import ServiceAccountCredentials
 
 
 def log(severity, msg):
