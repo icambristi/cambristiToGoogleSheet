@@ -10,7 +10,7 @@ import influxdb_client
 import jsonpath_ng.ext as jp
 import pandas as pd
 import requests
-from get_secrets import get_secret
+from get_secrets import get_secret, get_user_pwd
 from oauth2client.service_account import ServiceAccountCredentials
 
 
@@ -90,15 +90,15 @@ def upd_members_db_to_google_sheet():
              'https://spreadsheets.google.com/feeds',
              'https://www.googleapis.com/auth/drive']
     #
-    _, sa = get_secret("cambristiGoogleServiceAccount")
+    _, sa = get_user_pwd("cambristiGoogleServiceAccount")
     creds = ServiceAccountCredentials.from_json_keyfile_dict(json.loads(sa), scope)
     gc = gspread.authorize(creds)
 
-    _, spreadsheet_id = get_secret("cambristiMemberSheetID")
+    _, spreadsheet_id = get_user_pwd("cambristiMemberSheetID")
     sh = gc.open_by_key(spreadsheet_id)
     ws = sh.sheet1
 
-    _, token = get_secret("cambristiApiToken")
+    _, token = get_user_pwd("cambristiApiToken")
 
     headers = {'Accept': 'application/json',
                'auth': token
@@ -151,15 +151,15 @@ def upd_members_plans_to_google_sheet():
              'https://spreadsheets.google.com/feeds',
              'https://www.googleapis.com/auth/drive']
     #
-    _, sa = get_secret("cambristiGoogleServiceAccount")
+    _, sa = get_user_pwd("cambristiGoogleServiceAccount")
     creds = ServiceAccountCredentials.from_json_keyfile_dict(json.loads(sa), scope)
     gc = gspread.authorize(creds)
 
-    _, spreadsheet_id = get_secret("cambristiMembersPlanEventsSheetID")
+    _, spreadsheet_id = get_user_pwd("cambristiMembersPlanEventsSheetID")
     sh = gc.open_by_key(spreadsheet_id)
     ws = sh.sheet1
 
-    _, token = get_secret("cambristiApiToken")
+    _, token = get_user_pwd("cambristiApiToken")
 
     headers = {'Accept': 'application/json',
                'auth': token
@@ -251,11 +251,11 @@ def upd_logs_google_sheet():
              'https://www.googleapis.com/auth/drive']
 
     #
-    _, sa = get_secret("cambristiGoogleServiceAccount")
+    _, sa = get_user_pwd("cambristiGoogleServiceAccount")
     creds = ServiceAccountCredentials.from_json_keyfile_dict(json.loads(sa), scope)
     gc = gspread.authorize(creds)
 
-    _, spreadsheet_id = get_secret("cambristiLogSheetID")
+    _, spreadsheet_id = get_user_pwd("cambristiLogSheetID")
     sh = gc.open_by_key(spreadsheet_id)
     ws = sh.sheet1
 

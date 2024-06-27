@@ -16,8 +16,8 @@ COPY writeGoogleSheet.py  ${PROJ_DIR}
 COPY requirements.txt ${PROJ_DIR}
 COPY crontab ${PROJ_DIR}
 
-
-RUN pip install -r requirements.txt
+RUN pip install --upgrade pip
+RUN pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt
 RUN echo "${CRON_SPEC} python ${PROJ_DIR}/writeGoogleSheet.py >> ${LOG_FILE} 2>&1" > ${PROJ_DIR}/crontab
 
 RUN touch ${LOG_FILE} # Needed for the tail

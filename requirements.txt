@@ -6,4 +6,4 @@ oauth2client
 google-api-python-client
 jsonpath_ng
 influxdb_client
-getSecrets==1.1
+get_hc_secrets
