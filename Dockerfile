@@ -13,10 +13,7 @@ WORKDIR ${PROJ_DIR}
 RUN mkdir -p ${PROJ_DIR} /root/.config/.vault /root/.ssl
 
 COPY writeGoogleSheet.py  ${PROJ_DIR}
-COPY get_secrets.py  ${PROJ_DIR}
 COPY requirements.txt ${PROJ_DIR}
-# COPY vault.yml /root/.config/.vault
-# COPY bundle.pem /root/.ssl
 COPY crontab ${PROJ_DIR}
 
 

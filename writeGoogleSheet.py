@@ -265,7 +265,6 @@ def upd_logs_google_sheet():
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 0:
-        upd_members_db_to_google_sheet()
-        upd_members_plans_to_google_sheet()
+    upd_members_db_to_google_sheet()
+    upd_members_plans_to_google_sheet()
     upd_logs_google_sheet()
