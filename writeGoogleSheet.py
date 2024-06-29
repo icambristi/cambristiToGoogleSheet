@@ -10,7 +10,7 @@ import influxdb_client
 import jsonpath_ng.ext as jp
 import pandas as pd
 import requests
-from get_secrets import get_secret, get_user_pwd
+from getSecrets import get_secret, get_user_pwd
 from oauth2client.service_account import ServiceAccountCredentials
 
 
@@ -198,7 +198,7 @@ def upd_logs_google_sheet():
     query_api = client.query_api()
 
     query = """from(bucket: "cambristi")
-     |> range(start: -2d)
+     |> range(start: -7d)
      |> filter(fn: (r) => r._measurement == "Cambristi Production")
      |> sort(columns: ["_time"], desc: true) """
     tables = query_api.query(query, org="Home")
