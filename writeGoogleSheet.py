@@ -4,6 +4,7 @@ import json
 import logging
 import sys
 import uuid
+from time import sleep
 
 import gspread
 import influxdb_client
@@ -265,6 +266,9 @@ def upd_logs_google_sheet():
 
 
 if __name__ == '__main__':
-    upd_members_db_to_google_sheet()
-    upd_members_plans_to_google_sheet()
+    if len(sys.argv) < 2:
+        upd_members_db_to_google_sheet()
+        sleep(30)
+        upd_members_plans_to_google_sheet()
+        sleep(30)
     upd_logs_google_sheet()
