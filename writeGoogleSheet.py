@@ -40,7 +40,41 @@ def log(severity, msg):
         logging.error(resp.status_code, resp.text)
 
 
-def upd_members_db_to_google_sheet():
+def gc_login():
+    """
+    Get Service Account Credentials and open a connection to google services
+    :return:
+    """
+    scope = ['https://www.googleapis.com/auth/spreadsheets',
+             'https://spreadsheets.google.com/feeds',
+             'https://www.googleapis.com/auth/drive']
+
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(get_secret("cambristiGoogleServiceAccount"), scope)
+    return gspread.authorize(creds)
+
+
+def open_sheet(client, ws_id, sheet=None):
+    _, spreadsheet_id = get_user_pwd(ws_id)
+    wb = client.open_by_key(spreadsheet_id)
+    if sheet is None:
+        return wb.sheet1
+    else:
+        try:
+            return wb.worksheet(sheet)
+        except gspread.exceptions.WorksheetNotFound:
+            return None
+
+
+def update_data(ws, data, range, columns):
+    # convert all values to string
+    df = pd.DataFrame(data["items"]).fillna('').astype("string")
+    # re-order the column
+    df = df[columns]
+    ws.clear()
+    ws.update(range_name=range, values=[df.columns.values.tolist()] + df.values.tolist())
+
+
+def upd_members_db_to_google_sheet(gc):
     columns = [
         "_owner",
         "_createdDate",
@@ -87,41 +121,24 @@ def upd_members_db_to_google_sheet():
         "_id"
     ]
 
-    scope = ['https://www.googleapis.com/auth/spreadsheets',
-             'https://spreadsheets.google.com/feeds',
-             'https://www.googleapis.com/auth/drive']
-    #
-    _, sa = get_user_pwd("cambristiGoogleServiceAccount")
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(json.loads(sa), scope)
-    gc = gspread.authorize(creds)
-
-    _, spreadsheet_id = get_user_pwd("cambristiMemberSheetID")
-    sh = gc.open_by_key(spreadsheet_id)
-    ws = sh.sheet1
+    ws = open_sheet(gc, "cambristiMemberSheetID")
 
     _, token = get_user_pwd("cambristiApiToken")
-
     headers = {'Accept': 'application/json',
                'auth': token
                }
-
     URL = "https://www.cambristi.com/_functions/members/"
 
     resp = requests.get(URL, headers=headers)
     if resp.status_code == 200:
         data = resp.json()
-        # convert all values to string
-        df = pd.DataFrame(data["items"]).fillna('').astype("string")
-        # re-order the column
-        df = df[columns]
-        ws.clear()
-        ws.update(range_name="A1", values=[df.columns.values.tolist()] + df.values.tolist())
+        update_data(ws, data, "A1", columns)
         log('info', 'Members updated to Google Sheet')
     else:
         log('error', 'Upload to Google sheet error ' + str(resp.status_code))
 
 
-def upd_members_plans_to_google_sheet():
+def upd_members_plans_to_google_sheet(gc):
     columns = [
         "_id",
         "nomMembre",
@@ -148,41 +165,25 @@ def upd_members_plans_to_google_sheet():
         "cancellationInitiator",
         "validFor"
     ]
-    scope = ['https://www.googleapis.com/auth/spreadsheets',
-             'https://spreadsheets.google.com/feeds',
-             'https://www.googleapis.com/auth/drive']
-    #
-    _, sa = get_user_pwd("cambristiGoogleServiceAccount")
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(json.loads(sa), scope)
-    gc = gspread.authorize(creds)
 
-    _, spreadsheet_id = get_user_pwd("cambristiMembersPlanEventsSheetID")
-    sh = gc.open_by_key(spreadsheet_id)
-    ws = sh.sheet1
+    ws = open_sheet(gc, "cambristiMembersPlanEventsSheetID")
 
     _, token = get_user_pwd("cambristiApiToken")
-
     headers = {'Accept': 'application/json',
                'auth': token
                }
-
     URL = "https://www.cambristi.com/_functions/orders/"
 
     resp = requests.get(URL, headers=headers)
     if resp.status_code == 200:
         data = resp.json()
-        # convert all values to string
-        df = pd.DataFrame(data["items"]).fillna('').astype("string")
-        # re-order the column
-        df = df[columns]
-        ws.clear()
-        ws.update(range_name="A1", values=[df.columns.values.tolist()] + df.values.tolist())
+        update_data(ws, data, "A1", columns)
         log('info', 'Plans updated to Google Sheet')
     else:
         log('error', 'Upload to Google sheet error ' + str(resp.status_code))
 
 
-def upd_logs_google_sheet():
+def upd_logs_google_sheet(gc):
     cfg = get_secret('InfluxDbApiToken')
     bucket = cfg['bucket']
     db_token = cfg['token']
@@ -198,11 +199,11 @@ def upd_logs_google_sheet():
 
     query_api = client.query_api()
 
-    query = """from(bucket: "cambristi")
+    query = f"""from(bucket: {bucket})
      |> range(start: -7d)
      |> filter(fn: (r) => r._measurement == "Cambristi Production")
      |> sort(columns: ["_time"], desc: true) """
-    tables = query_api.query(query, org="Home")
+    tables = query_api.query(query, org=org)
 
     all_rows = [['timestamp', 'severity', 'module', 'msg']]
     for table in tables:
@@ -247,28 +248,17 @@ def upd_logs_google_sheet():
                 row = [rec['timestamp'], severity, module, str(_msg)[:512]]
                 all_rows.append(row)
 
-    scope = ['https://www.googleapis.com/auth/spreadsheets',
-             'https://spreadsheets.google.com/feeds',
-             'https://www.googleapis.com/auth/drive']
-
-    #
-    _, sa = get_user_pwd("cambristiGoogleServiceAccount")
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(json.loads(sa), scope)
-    gc = gspread.authorize(creds)
-
-    _, spreadsheet_id = get_user_pwd("cambristiLogSheetID")
-    sh = gc.open_by_key(spreadsheet_id)
-    ws = sh.sheet1
-
+    ws = open_sheet(gc, "cambristiLogSheetID")
     ws.clear()
     ws.update(range_name="A1", values=all_rows)
     log('info', 'Logs updated to Google Sheet')
 
 
 if __name__ == '__main__':
+    gc = gc_login()
     if len(sys.argv) < 2:
-        upd_members_db_to_google_sheet()
-        sleep(30)
-        upd_members_plans_to_google_sheet()
-        sleep(30)
-    upd_logs_google_sheet()
+        upd_members_db_to_google_sheet(gc)
+        sleep(1)
+        upd_members_plans_to_google_sheet(gc)
+        sleep(1)
+    upd_logs_google_sheet(gc)
