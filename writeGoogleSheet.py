@@ -199,7 +199,7 @@ def upd_logs_google_sheet(gc):
 
     query_api = client.query_api()
 
-    query = f"""from(bucket: {bucket})
+    query = f"""from(bucket: "{bucket}")
      |> range(start: -7d)
      |> filter(fn: (r) => r._measurement == "Cambristi Production")
      |> sort(columns: ["_time"], desc: true) """
