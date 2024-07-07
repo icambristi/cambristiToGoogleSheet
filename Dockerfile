@@ -13,8 +13,9 @@ WORKDIR ${PROJ_DIR}
 RUN mkdir -p ${PROJ_DIR} /root/.config/.vault /root/.ssl
 
 COPY writeGoogleSheet.py  ${PROJ_DIR}
+COPY config.yml  ${PROJ_DIR}
 COPY requirements.txt ${PROJ_DIR}
-COPY crontab ${PROJ_DIR}
+# COPY crontab ${PROJ_DIR}
 
 RUN pip install --upgrade pip
 RUN pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org -r requirements.txt
@@ -23,5 +24,4 @@ RUN echo "${CRON_SPEC} python ${PROJ_DIR}/writeGoogleSheet.py >> ${LOG_FILE} 2>&
 RUN touch ${LOG_FILE} # Needed for the tail
 RUN crontab ${PROJ_DIR}/crontab
 RUN crontab -l
-CMD echo "192.168.129.5 vault" >> /etc/hosts && crond  && tail -f ${LOG_FILE}
-# CMD /bin/sh
+CMD crond  && tail -f ${LOG_FILE}

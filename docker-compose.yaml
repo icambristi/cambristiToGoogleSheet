@@ -6,3 +6,5 @@ services:
     volumes:
       - /root/.config/.vault:/root/.config/.vault
       - /root/.ssl:/root/.ssl
+    extra_hosts:
+      - "vault:192.168.129.5"

@@ -11,8 +11,11 @@ import influxdb_client
 import jsonpath_ng.ext as jp
 import pandas as pd
 import requests
+import yaml
 from getSecrets import get_secret, get_user_pwd
 from oauth2client.service_account import ServiceAccountCredentials
+
+config = yaml.safe_load(open('config.yml'))
 
 
 def log(severity, msg):
@@ -25,8 +28,10 @@ def log(severity, msg):
     elif severity == 'error':
         logging.error(msg)
 
-    hash_object = hashlib.sha256(b'Cambristi Sushi RPI')
+    hash_object = hashlib.sha256(config['logs']['username'].encode())
     pbHash = hash_object.hexdigest()
+    url = config['logs']['url']
+    tag = config['logs']['tag']
     headers = {"Content-Type": "application/json"}
     data = {
         "timestamp": datetime.datetime.now().isoformat(),
@@ -34,10 +39,12 @@ def log(severity, msg):
         "severity": severity,
         "message": msg
     }
-    resp = requests.post(f'https://home.mayeur.be:6123/log?token={pbHash}&tag=wixtogoogle',
-                         headers=headers, json=data)
-    if resp.status_code != 201:
-        logging.error(resp.status_code, resp.text)
+    try:
+        resp = requests.post(f'{url}?token={pbHash}&tag={tag}', headers=headers, json=data)
+        if resp.status_code != 201:
+            logging.error(resp.status_code, resp.text)
+    except Exception as e:
+        logging.error(e)
 
 
 def gc_login():
@@ -122,14 +129,12 @@ def upd_members_db_to_google_sheet(gc):
     ]
 
     ws = open_sheet(gc, "cambristiMemberSheetID")
-
     _, token = get_user_pwd("cambristiApiToken")
     headers = {'Accept': 'application/json',
                'auth': token
                }
-    URL = "https://www.cambristi.com/_functions/members/"
-
-    resp = requests.get(URL, headers=headers)
+    url = config['cambristi']['members_endpoint']
+    resp = requests.get(url, headers=headers)
     if resp.status_code == 200:
         data = resp.json()
         update_data(ws, data, "A1", columns)
@@ -172,9 +177,8 @@ def upd_members_plans_to_google_sheet(gc):
     headers = {'Accept': 'application/json',
                'auth': token
                }
-    URL = "https://www.cambristi.com/_functions/orders/"
-
-    resp = requests.get(URL, headers=headers)
+    url = config['cambristi']['orders_endpoint']
+    resp = requests.get(url, headers=headers)
     if resp.status_code == 200:
         data = resp.json()
         update_data(ws, data, "A1", columns)
