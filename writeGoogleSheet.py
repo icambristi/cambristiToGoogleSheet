@@ -15,7 +15,10 @@ import yaml
 from getSecrets import get_secret, get_user_pwd
 from oauth2client.service_account import ServiceAccountCredentials
 
-config = yaml.safe_load(open('config.yml'))
+try:
+    config = yaml.safe_load(open('/app/config.yml'))
+except FileNotFoundError:
+    config = yaml.safe_load(open('config.yml'))
 
 
 def log(severity, msg):
