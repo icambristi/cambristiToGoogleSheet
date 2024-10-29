@@ -5,7 +5,6 @@ import logging
 import sys
 import uuid
 from time import sleep
-
 import gspread
 import influxdb_client
 import jsonpath_ng.ext as jp
@@ -14,6 +13,7 @@ import requests
 import yaml
 from getSecrets import get_secret, get_user_pwd
 from oauth2client.service_account import ServiceAccountCredentials
+
 
 try:
     config = yaml.safe_load(open('/app/config.yml'))
@@ -30,7 +30,8 @@ def log(severity, msg):
         logging.warning(msg)
     elif severity == 'error':
         logging.error(msg)
-
+    else:
+        logging.info(msg)
     hash_object = hashlib.sha256(config['logs']['username'].encode())
     pbHash = hash_object.hexdigest()
     url = config['logs']['url']
@@ -191,6 +192,7 @@ def upd_members_plans_to_google_sheet(gc):
 
 
 def upd_logs_google_sheet(gc):
+    ndays = config['logs']['ndays']
     cfg = get_secret('InfluxDbApiToken')
     bucket = cfg['bucket']
     db_token = cfg['token']
@@ -207,7 +209,7 @@ def upd_logs_google_sheet(gc):
     query_api = client.query_api()
 
     query = f"""from(bucket: "{bucket}")
-     |> range(start: -7d)
+     |> range(start: -{ndays}d)
      |> filter(fn: (r) => r._measurement == "Cambristi Production")
      |> sort(columns: ["_time"], desc: true) """
     tables = query_api.query(query, org=org)
@@ -245,13 +247,15 @@ def upd_logs_google_sheet(gc):
                     severity = hdr['severity']
 
                 _msg = msg
-                if len(msg) == 1 and isinstance(msg[0], dict):
-                    if 'message' in msg[0]:
-                        _msg = msg[0]['message']
+                try:
+                    if len(msg) == 1 and isinstance(msg[0], dict):
+                        if 'message' in msg[0]:
+                            _msg = msg[0]['message']
 
-                    if 'event' in msg[0]:
-                        _msg += " event:" + str(msg[0]['event'])
-
+                        if 'event' in msg[0]:
+                            _msg += " event:" + str(msg[0]['event'])
+                except KeyError as e:
+                    pass
                 row = [rec['timestamp'], severity, module, str(_msg)[:512]]
                 all_rows.append(row)
 

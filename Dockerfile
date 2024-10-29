@@ -7,7 +7,7 @@ LABEL maintainer="xavier@mayeur.be"
 
 ENV PROJ_DIR="/app"
 ENV LOG_FILE="${PROJ_DIR}/app.log"
-ENV CRON_SPEC="0 2 * * *"
+ENV CRON_SPEC="0 5 * * *"
 
 WORKDIR ${PROJ_DIR}
 RUN mkdir -p ${PROJ_DIR} /root/.config/.vault /root/.ssl
