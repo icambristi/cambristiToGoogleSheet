@@ -5,6 +5,7 @@ import logging
 import sys
 import uuid
 from time import sleep
+
 import gspread
 import influxdb_client
 import jsonpath_ng.ext as jp
@@ -13,7 +14,6 @@ import requests
 import yaml
 from getSecrets import get_secret, get_user_pwd
 from oauth2client.service_account import ServiceAccountCredentials
-
 
 try:
     config = yaml.safe_load(open('/app/config.yml'))
@@ -241,7 +241,10 @@ def upd_logs_google_sheet(gc):
                 if isinstance(hdr, dict) and 'module' in hdr:
                     module = hdr['module']
                 if 'sourceLocation' in rec:
-                    module = rec['sourceLocation']['file'] + ":" + str(rec['sourceLocation']['line']) + " in " + module
+                    module = rec['sourceLocation']['file']
+                    if 'line' in rec['sourceLocation']:
+                        module += ":" + str(rec['sourceLocation']['line'])
+                    module += " in " + module
 
                 if isinstance(hdr, dict) and 'severity' in hdr:
                     severity = hdr['severity']
