@@ -12,7 +12,7 @@ ENV CRON_SPEC="0 5 * * *"
 WORKDIR ${PROJ_DIR}
 RUN mkdir -p ${PROJ_DIR} /root/.config/.vault /root/.ssl
 
-COPY writeGoogleSheet.py  ${PROJ_DIR}
+COPY old_writeGoogleSheet.py  ${PROJ_DIR}
 COPY config.yml  ${PROJ_DIR}
 COPY requirements.txt ${PROJ_DIR}
 # COPY crontab ${PROJ_DIR}
