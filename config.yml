@@ -7,4 +7,5 @@ logs:
 cambristi:
   members_endpoint: https://www.cambristi.com/_functions/members/
   orders_endpoint: https://www.cambristi.com/_functions/orders/
+  activities_endpoint: https://www.cambristi.com/_functions/activities/
 
