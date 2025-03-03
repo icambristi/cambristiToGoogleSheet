@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import argparse
 import datetime
 import hashlib
@@ -183,13 +184,14 @@ def upd_members_plans_to_google_sheet(gc):
         log('info', 'Plans updated to Google Sheet')
 
 
-def upd_logs_google_sheet(gc):
+def upd_logs_google_sheet(gc, ndays):
     """
     Update the logs data to a Google Sheet
     :param gc: gspread.Client
     :return
     """
-    ndays = config['logs']['ndays']
+    if not ndays:
+        ndays = config['logs']['ndays']
     cfg = get_secret('InfluxDbApiToken')
     bucket = cfg['bucket']
     db_token = cfg['token']
@@ -286,6 +288,7 @@ if __name__ == '__main__':
     parser.add_argument("-m", "--members", help="Get log files", action="store_true")
     parser.add_argument("-p", "--plans", help="Get log files", action="store_true")
     parser.add_argument("-a", "--activities", help="Get log files", action="store_true")
+    parser.add_argument("-d", "--days", help="nr of days of log files", type=int)
     args = parser.parse_args()
 
     if len(sys.argv) <= 1:
@@ -303,7 +306,7 @@ if __name__ == '__main__':
         upd_members_plans_to_google_sheet(gc)
         sleep(1)
     if args.log:
-        upd_logs_google_sheet(gc)
+        upd_logs_google_sheet(gc, args.days)
         sleep()
     if args.activities:
         upd_activities_to_google_sheet(gc)
