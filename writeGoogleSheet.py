@@ -307,6 +307,6 @@ if __name__ == '__main__':
         sleep(1)
     if args.log:
         upd_logs_google_sheet(gc, args.days)
-        sleep()
+        sleep(1)
     if args.activities:
         upd_activities_to_google_sheet(gc)
