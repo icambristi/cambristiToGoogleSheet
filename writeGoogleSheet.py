@@ -8,12 +8,14 @@ import sys
 import uuid
 from time import sleep
 
+import folium
 import gspread
 import influxdb_client
 import jsonpath_ng.ext as jp
 import pandas as pd
 import requests
 import yaml
+from geopy.geocoders import TomTom
 from getSecrets import get_secret, get_user_pwd
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -107,7 +109,7 @@ def open_sheet(client, ws_id, sheet=None):
         return None
 
 
-def update_data(ws, data, range, columns):
+def update_data(ws, df, range, columns):
     """
     Update a Google Sheet with data
     :param ws: gspread.Worksheet
@@ -117,8 +119,7 @@ def update_data(ws, data, range, columns):
     :return: None
 
     """
-    df = pd.DataFrame(data["items"]).fillna('').astype("string")
-    df = df[columns]
+
     ws.clear()
     ws.update(range_name=range, values=[df.columns.values.tolist()] + df.values.tolist())
 
@@ -139,7 +140,54 @@ def fetch_data(url, token):
         return None
 
 
-def upd_members_db_to_google_sheet(gc):
+def geomap_address(df):
+    """
+    Map the address of members on a map
+    :param df: pd.DataFrame
+    :return: None
+    """
+    key = get_secret("TomTomAPI")["key"]
+
+    # geolocator = Nominatim(user_agent="my_geocoder")
+    geolocator = TomTom(api_key=key)
+
+    location = geolocator.geocode("Bruxelles, Belgique")
+    m = folium.Map([location.latitude, location.longitude], zoom_start=9)
+
+    for idx, r in df.iterrows():
+        sleep(0.3)
+        if idx > 1000:
+            break
+        if not r["cotisationExpiration"]:
+            continue
+        country = {
+            "BE": "Belgique"
+        }
+        address = ""
+        try:
+            pays = country[r["adressePays"]].strip()
+            if not pays:
+                pays = "Belgique"
+            address = str(r["adresseNumero"]) + " " + r["adresseRue"].strip() + ", " + str(int(r["adresseCp"])) + " " + \
+                      r[
+                          "adresseVille"].strip() + ", " + pays
+
+            location = geolocator.geocode(address)
+            # print(location)
+            folium.Marker(
+                location=[location.latitude, location.longitude],
+                tooltip=r["prenom"] + " " + r["nom"],
+                popup=address,
+                icon=folium.Icon(color="red"),
+            ).add_to(m)
+        except:
+            print('ERROR', "geocode error for " + r["prenom"] + " " + r["nom"] + ":  " + address)
+            continue
+        # log('INFO', r["prenom"] + " " + r["nom"])
+    m.save(config['geomap']['index'])
+
+
+def upd_members_db_to_google_sheet(gc, geomap=False):
     """
     Update the members data to a Google Sheet
     :param gc: gspread.Client
@@ -159,7 +207,12 @@ def upd_members_db_to_google_sheet(gc):
     _, token = get_user_pwd("cambristiApiToken")
     data = fetch_data(config['cambristi']['members_endpoint'], token)
     if data:
-        update_data(ws, data, "A1", columns)
+        df = pd.DataFrame(data["items"]).fillna('').astype("string")
+        df = df[columns]
+        update_data(ws, df, "A1", columns)
+        if geomap:
+            df_filtered = df[df['cotisationExpiration'] != '']
+            geomap_address(df_filtered)
         log('info', 'Members updated to Google Sheet')
 
 
@@ -289,6 +342,7 @@ if __name__ == '__main__':
     parser.add_argument("-p", "--plans", help="Get log files", action="store_true")
     parser.add_argument("-a", "--activities", help="Get log files", action="store_true")
     parser.add_argument("-d", "--days", help="nr of days of log files", type=int)
+    parser.add_argument("-g", "--geomap", help="Map members address on a map", action="store_true")
     args = parser.parse_args()
 
     if len(sys.argv) <= 1:
@@ -300,7 +354,7 @@ if __name__ == '__main__':
     gc = gc_login()
 
     if args.members:
-        upd_members_db_to_google_sheet(gc)
+        upd_members_db_to_google_sheet(gc, args.geomap)
         sleep(1)
     if args.plans:
         upd_members_plans_to_google_sheet(gc)

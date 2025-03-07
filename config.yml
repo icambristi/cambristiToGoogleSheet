@@ -9,3 +9,6 @@ cambristi:
   orders_endpoint: https://www.cambristi.com/_functions/orders/
   activities_endpoint: https://www.cambristi.com/_functions/activities/
 
+geomap:
+  index: geomap.html
+

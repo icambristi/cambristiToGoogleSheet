@@ -7,3 +7,5 @@ google-api-python-client
 jsonpath_ng
 influxdb_client
 get_hc_secrets
+folium
+geopy
