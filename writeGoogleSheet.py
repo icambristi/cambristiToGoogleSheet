@@ -209,10 +209,15 @@ def upd_members_db_to_google_sheet(gc, geomap=False):
     if data:
         df = pd.DataFrame(data["items"]).fillna('').astype("string")
         df = df[columns]
-        update_data(ws, df, "A1", columns)
+        # update_data(ws, df, "A1", columns)
         if geomap:
-            df_filtered = df[df['cotisationExpiration'] != '']
-            geomap_address(df_filtered)
+            # df_filtered = df[df['cotisationExpiration'] != '']
+            today = datetime.datetime.now(datetime.UTC)
+            df['cotisationExpirationDate'] = pd.to_datetime(df['cotisationExpiration'])
+            df['cotisationExpirationnDays'] = (df['cotisationExpirationDate'] - today).dt.days
+            df = df[df['cotisationExpirationnDays'] > 0]
+            geomap_address(df)
+
         log('info', 'Members updated to Google Sheet')
 
 
