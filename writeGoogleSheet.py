@@ -238,7 +238,9 @@ def upd_members_plans_to_google_sheet(gc):
     _, token = get_user_pwd("cambristiApiToken")
     data = fetch_data(config['cambristi']['orders_endpoint'], token)
     if data:
-        update_data(ws, data, "A1", columns)
+        df = pd.DataFrame(data["items"]).fillna('').astype("string")
+        df = df[columns]
+        update_data(ws, df, "A1", columns)
         log('info', 'Plans updated to Google Sheet')
 
 
