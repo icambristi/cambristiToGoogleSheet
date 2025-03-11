@@ -4,6 +4,7 @@ import datetime
 import hashlib
 import json
 import logging
+import os.path
 import sys
 import uuid
 from time import sleep
@@ -152,7 +153,7 @@ def geomap_address(df):
     geolocator = TomTom(api_key=key)
 
     location = geolocator.geocode("Bruxelles, Belgique")
-    m = folium.Map([location.latitude, location.longitude], zoom_start=9)
+    m = folium.Map([location.latitude, location.longitude], zoom_start=8)
 
     for idx, r in df.iterrows():
         sleep(0.3)
@@ -184,7 +185,11 @@ def geomap_address(df):
             print('ERROR', "geocode error for " + r["prenom"] + " " + r["nom"] + ":  " + address)
             continue
         # log('INFO', r["prenom"] + " " + r["nom"])
-    m.save(config['geomap']['index'])
+
+    if os.path.exists(config['geomap']['index']):
+        m.save(config['geomap']['index'])
+    else:
+        m.save("geomap.html")
 
 
 def upd_members_db_to_google_sheet(gc, geomap=False):
@@ -334,7 +339,9 @@ def upd_activities_to_google_sheet(gc):
             item2["responsibles"] = item["adminEmail"] + ", " + item["adminEmail1"]
             data2["items"].append(item2)
 
-        update_data(ws, data2, "A1", columns)
+        df = pd.DataFrame(data2["items"]).fillna('').astype("string")
+        df = df[columns]
+        update_data(ws, df, "A1", columns)
         log('info', 'Activities Sheet updated to Google Sheet')
 
 
@@ -357,6 +364,7 @@ if __name__ == '__main__':
         args.members = True
         args.plans = True
         args.activities = True
+        args.geomap = True
 
     gc = gc_login()
 
