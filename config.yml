@@ -10,5 +10,5 @@ cambristi:
   activities_endpoint: https://www.cambristi.com/_functions/activities/
 
 geomap:
-  index: /var/www/html/cambristi_members/geomap.html
+  index: geomap.html
 

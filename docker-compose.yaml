@@ -6,5 +6,6 @@ services:
     volumes:
       - /root/.config/.vault:/root/.config/.vault
       - /root/.ssl:/root/.ssl
+      - /app/geomap.html:/var/www/html/cambristi_members/geomap.html
     extra_hosts:
       - "vault:192.168.129.5"

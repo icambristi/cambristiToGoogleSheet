@@ -4,7 +4,6 @@ import datetime
 import hashlib
 import json
 import logging
-import os.path
 import sys
 import uuid
 from time import sleep
@@ -186,10 +185,8 @@ def geomap_address(df):
             continue
         # log('INFO', r["prenom"] + " " + r["nom"])
 
-    if os.path.exists(config['geomap']['index']):
-        m.save(config['geomap']['index'])
-    else:
-        m.save("geomap.html")
+    m.save(config['geomap']['index'])
+
 
 
 def upd_members_db_to_google_sheet(gc, geomap=False):
@@ -365,6 +362,9 @@ if __name__ == '__main__':
         args.plans = True
         args.activities = True
         args.geomap = True
+
+    if args.geomap:
+        args.members = True
 
     gc = gc_login()
 
