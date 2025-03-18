@@ -10,7 +10,7 @@ ENV LOG_FILE="${PROJ_DIR}/app.log"
 ENV CRON_SPEC="0 5 * * *"
 
 WORKDIR ${PROJ_DIR}
-RUN mkdir -p ${PROJ_DIR} /root/.config/.vault /root/.ssl
+RUN mkdir -p ${PROJ_DIR}/data /root/.config/.vault /root/.ssl
 
 COPY writeGoogleSheet.py  ${PROJ_DIR}
 RUN chmod +x ${PROJ_DIR}/writeGoogleSheet.py

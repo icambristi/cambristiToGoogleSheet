@@ -149,7 +149,7 @@ def geomap_address(df):
     key = get_secret("TomTomAPI")["key"]
 
     # geolocator = Nominatim(user_agent="my_geocoder")
-    geolocator = TomTom(api_key=key)
+    geolocator = TomTom(api_key=key, timeout=10)
 
     location = geolocator.geocode("Bruxelles, Belgique")
     m = folium.Map([location.latitude, location.longitude], zoom_start=8)
@@ -172,6 +172,9 @@ def geomap_address(df):
                       r[
                           "adresseVille"].strip() + ", " + pays
 
+            if not address:
+                continue
+
             location = geolocator.geocode(address)
             # print(location)
             folium.Marker(
@@ -180,12 +183,14 @@ def geomap_address(df):
                 popup=address,
                 icon=folium.Icon(color="red"),
             ).add_to(m)
+
         except:
             print('ERROR', "geocode error for " + r["prenom"] + " " + r["nom"] + ":  " + address)
             continue
         # log('INFO', r["prenom"] + " " + r["nom"])
 
     m.save(config['geomap']['index'])
+    log('info', 'Member map updated')
 
 
 
