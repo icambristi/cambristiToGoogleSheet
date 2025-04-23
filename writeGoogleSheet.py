@@ -283,6 +283,9 @@ def upd_logs_google_sheet(gc, ndays):
         for record in table.records:
             rec = json.loads(record.get_value())
             q = jp.parse('jsonPayload.message')
+            mode = jp.parse('labels.viewMode').find(rec)[0].value
+            if mode != 'Site':
+                continue
             for match in q.find(rec):
                 msg = match.value
                 if msg[0] == '[' or msg[0] == "{":
@@ -366,7 +369,7 @@ if __name__ == '__main__':
         args.members = True
         args.plans = True
         args.activities = True
-        args.geomap = True
+        # args.geomap = True
 
     if args.geomap:
         args.members = True
