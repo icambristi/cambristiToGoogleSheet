@@ -193,7 +193,6 @@ def geomap_address(df):
     log('info', 'Member map updated')
 
 
-
 def upd_members_db_to_google_sheet(gc, geomap=False):
     """
     Update the members data to a Google Sheet
