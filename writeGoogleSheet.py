@@ -265,7 +265,9 @@ def upd_logs_google_sheet(gc, ndays):
     db_url = cfg['url']
 
     try:
-        client = influxdb_client.InfluxDBClient(url=db_url, token=db_token, org=org)
+        client = influxdb_client.InfluxDBClient(url=db_url, token=db_token, org=org,
+                                                default_configuration={"batch_size": 10000}
+                                                )
     except Exception as e:
         logging.error(f'client {str(e)}')
         sys.exit(1)
@@ -275,6 +277,8 @@ def upd_logs_google_sheet(gc, ndays):
      |> range(start: -{ndays}d)
      |> filter(fn: (r) => r._measurement == "Cambristi Production")
      |> sort(columns: ["_time"], desc: true) """
+    import csv
+    csv.field_size_limit(10 ** 7)  # Fixe la taille maximale par champ à 10 Mo
     tables = query_api.query(query, org=org)
 
     all_rows = [['timestamp', 'severity', 'module', 'msg']]
