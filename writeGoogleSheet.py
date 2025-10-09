@@ -41,10 +41,15 @@ def log(severity, msg):
     :param severity: str
     :param msg: str
     :return: None
-
     """
-    logging_function = getattr(logging, severity, logging.info)
-    logging_function(msg)
+    valid_severities = {'info', 'debug', 'warning', 'error'}
+
+    if severity in valid_severities:
+        logging_function = getattr(logging, severity)
+        logging_function(msg)
+    else:
+        logging.error(f"Invalid severity level: {severity}")
+        logging.info(msg)
 
     hash_object = hashlib.sha256(config['logs']['username'].encode())
     pbHash = hash_object.hexdigest()
@@ -200,7 +205,7 @@ def upd_members_db_to_google_sheet(gc, geomap=False):
     :return
     """
     columns = [
-        "_owner", "_createdDate", "_updatedDate", "email", "nom", "prenom", "cotisationExpiration",
+        "title", "_owner", "_createdDate", "_updatedDate", "email", "nom", "prenom", "cotisationExpiration",
         "instrument1", "categorie1", "instrument2", "categorie2", "prefR", "prefS", "prefT", "prefO",
         "adresseRue", "adresseNumero", "adresseBoite", "adresseCp", "adresseVille", "adressePays",
         "telMobC", "telMobP", "telMobN", "telHomeC", "telHomeP", "telHomeN", "telWorkC", "telWorkP",
