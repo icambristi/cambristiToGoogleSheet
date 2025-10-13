@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 import argparse
 import datetime
-import hashlib
 import json
 import logging
 import sys
-import uuid
 from time import sleep
 
 import folium
@@ -51,18 +49,18 @@ def log(severity, msg):
         logging.error(f"Invalid severity level: {severity}")
         logging.info(msg)
 
-    hash_object = hashlib.sha256(config['logs']['username'].encode())
-    pbHash = hash_object.hexdigest()
-    url = config['logs']['url']
-    tag = config['logs']['tag']
-    headers = {"Content-Type": "application/json"}
-    data = {
-        "timestamp": datetime.datetime.now().isoformat(),
-        "event_id": str(uuid.uuid4()),
-        "severity": severity,
-        "message": msg
-    }
-    send_log_request(url, pbHash, tag, headers, data)
+    # hash_object = hashlib.sha256(config['logs']['username'].encode())
+    # pbHash = hash_object.hexdigest()
+    # url = config['logs']['url']
+    # tag = config['logs']['tag']
+    # headers = {"Content-Type": "application/json"}
+    # data = {
+    #     "timestamp": datetime.datetime.now().isoformat(),
+    #     "event_id": str(uuid.uuid4()),
+    #     "severity": severity,
+    #     "message": msg
+    # }
+    # send_log_request(url, pbHash, tag, headers, data)
 
 
 def send_log_request(url, pbHash, tag, headers, data):
@@ -316,6 +314,10 @@ def upd_logs_google_sheet(gc, ndays):
 
                 try:
                     _msg = msg[0].get('message', "") if len(msg) == 1 and isinstance(msg[0], dict) else msg
+                    if severity == "" and isinstance(_msg, dict):
+                        severity = _msg['severity']
+                    if 'Error' in _msg:
+                        severity = 'ERROR'
                 except KeyError as e:
                     pass
                 row = [rec['timestamp'], severity, module, str(_msg)[:512]]
