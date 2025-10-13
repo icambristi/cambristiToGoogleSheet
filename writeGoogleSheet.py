@@ -306,16 +306,17 @@ def upd_logs_google_sheet(gc, ndays):
                 hdr = msg[0] if isinstance(msg, list) and len(msg) == 1 else ""
                 module = hdr.get('module', "") if isinstance(hdr, dict) else ""
                 severity = hdr.get('severity', "") if isinstance(hdr, dict) else ""
-
+                line = ""
                 if 'sourceLocation' in rec:
                     module = rec['sourceLocation']['file']
-                    if 'line' in rec['sourceLocation']:
-                        module += f":{rec['sourceLocation']['line']} in {module}"
+                    line = f":{rec['sourceLocation']['line']}" if 'line' in rec['sourceLocation'] else ""
 
                 try:
                     _msg = msg[0].get('message', "") if len(msg) == 1 and isinstance(msg[0], dict) else msg
                     if severity == "" and isinstance(_msg, dict):
-                        severity = _msg['severity']
+                        severity = _msg['severity'] if 'severity' in _msg else ""
+                        module = module + ' - ' + _msg['module'] + ' line:' + line
+                        _msg = _msg['message'] if 'message' in _msg else "" + _msg['event'] if 'event' in _msg else ""
                     if 'Error' in _msg:
                         severity = 'ERROR'
                 except KeyError as e:
