@@ -1,4 +1,4 @@
-FROM python:3.11-alpine
+FROM python:alpine
 
 LABEL author="Xavier Mayeur"
 LABEL version="1.0"

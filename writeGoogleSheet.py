@@ -17,6 +17,8 @@ from geopy.geocoders import TomTom
 from getSecrets import get_secret, get_user_pwd
 from oauth2client.service_account import ServiceAccountCredentials
 
+test_mode = False
+
 
 def load_config():
     """
@@ -106,6 +108,30 @@ def open_sheet(client, ws_id, sheet=None):
     """
     _, spreadsheet_id = get_user_pwd(ws_id)
     wb = client.open_by_key(spreadsheet_id)
+    try:
+        return wb.worksheet(sheet) if sheet else wb.sheet1
+    except gspread.exceptions.WorksheetNotFound:
+        return None
+
+
+def open_workbook(client, ws_id):
+    """
+    Open a Google Sheet
+    :param client: gspread.Client
+    :param ws_id: str
+    :param sheet: str
+    :return: gspread.Worksheet
+
+    """
+    _, spreadsheet_id = get_user_pwd(ws_id)
+    return client.open_by_key(spreadsheet_id)
+    # try:
+    #     return wb.worksheet(sheet) if sheet else wb.sheet1
+    # except gspread.exceptions.WorksheetNotFound:
+    #     return None
+
+
+def open_worksheet(wb, sheet):
     try:
         return wb.worksheet(sheet) if sheet else wb.sheet1
     except gspread.exceptions.WorksheetNotFound:
@@ -338,27 +364,61 @@ def upd_activities_to_google_sheet(gc):
     #
     # ]
 
-    columns = ["activityName", "activityType", "date", "location", "address", "responsibles"]
-    ws = open_sheet(gc, "CambristiActivitySheetId")
+    wb = open_workbook(gc, "CambristiActivitySheetId")
+    ws = open_worksheet(wb, "Activities")
     _, token = get_user_pwd("cambristiApiToken")
-    data = fetch_data(config['cambristi']['activities_endpoint'], token)
-    if data:
-        data2 = {"items": []}
+    all_activities = fetch_data(config['cambristi']['activities_endpoint'], token)
+    activities = {"items": []}
+    if all_activities:
 
-        for item in data["items"]:
-            item2 = {}
-            item2["activityName"] = item["title"]
-            item2["activityType"] = item["typeActivite"]
-            item2["date"] = item["dateDebut"].split("T")[0]
-            item2["location"] = item["nomLieu"]
-            item2["address"] = item["lieu"]["formatted"]
-            item2["responsibles"] = item["adminEmail"] + ", " + item["adminEmail1"]
-            data2["items"].append(item2)
+        for item in all_activities["items"]:
+            item2 = {"activityName": item["title"],
+                     "activityType": item["typeActivite"],
+                     "date": item["dateDebut"].split("T")[0],
+                     "location": item["nomLieu"],
+                     "address": item["lieu"]["formatted"],
+                     "responsibles": item["adminEmail"] + ", " + item["adminEmail1"]}
+            activities["items"].append(item2)
 
-        df = pd.DataFrame(data2["items"]).fillna('').astype("string")
-        df = df[columns]
-        update_data(ws, df, "A1", columns)
-        log('info', 'Activities Sheet updated to Google Sheet')
+        df_activities = pd.DataFrame(activities["items"]).fillna('').astype("string")
+        # columns = ["activityName", "activityType", "date", "location", "address", "responsibles"]
+        columns = activities["items"][0].keys()
+        df_activities = df_activities[columns]
+        if not test_mode: update_data(ws, df_activities, "A1", columns)
+
+    groups = fetch_data(config['cambristi']['groups_endpoint'], token)
+    df_groups = pd.DataFrame(groups["items"]).fillna('').astype("string")
+    columns = groups["items"][0].keys()
+    df_groups = df_groups[columns]
+
+    participants = fetch_data(config['cambristi']['participants_endpoint'], token)
+    # participants = {"items": []}
+    # if data:
+    #
+    #     for item in data["items"]:
+    #         item2 = {
+    #             "participantName": item["prenom"] + " " + item["nom"],
+    #             "participantEmail": item["email"],
+    #             "memberId": item["memberId"],
+    #             "planEventId": item["paymtEventId"] if  "paymtEventId" in item else "",
+    #             "stageId": item["stageId"],
+    #             "stageName": item["stageName"],
+    #             'groupId': item["groupId"],
+    #             "groupName": item["groupName"],
+    #             'instrument': item["instrument"],
+    #             'level': item["level"] if "level" in item else "",
+    #             "isYoung": item["isYoung"] if "isYoung" in item else "",
+    #             "isCotiPaid": item["isCotipaid"] if "isCotipaid" in item else "",
+    #             'paidAmount': item["paidAmount"] if "paidAmount" in item else "",
+    #             'note': item["note"] if "note" in item else "",
+    #         }
+    #         participants["items"].append(item2)
+
+    df_participants = pd.DataFrame(participants["items"]).fillna('').astype("string")
+    columns = participants["items"][0].keys()
+    df_participants = df_participants[columns]
+
+    log('info', 'Activities Sheet updated to Google Sheet')
 
 
 if __name__ == '__main__':
@@ -373,6 +433,7 @@ if __name__ == '__main__':
     parser.add_argument("-a", "--activities", help="Get log files", action="store_true")
     parser.add_argument("-d", "--days", help="nr of days of log files", type=int)
     parser.add_argument("-g", "--geomap", help="Map members address on a map", action="store_true")
+    parser.add_argument("-t", "--test", help="Test mode", action="store_true")
     args = parser.parse_args()
 
     if len(sys.argv) <= 1:
@@ -384,6 +445,9 @@ if __name__ == '__main__':
 
     if args.geomap:
         args.members = True
+
+    if args.test:
+        test_mode = True
 
     gc = gc_login()
 
