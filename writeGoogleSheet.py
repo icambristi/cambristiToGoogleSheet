@@ -357,66 +357,88 @@ def upd_logs_google_sheet(gc, ndays):
 
 
 def upd_activities_to_google_sheet(gc):
-    # columns = [
-    #     "_id", "title", "description", "_createdDate", "_updatedDate", "_owner", "dateDebut", "time", "dateFin",
-    #     "nomLieu", "lieu", "adminEmail", "adminEmail1", "adminId", "adminId1", "typeActivite",  "prixMembre",
-    #     "prixNonMembre", "prixJeune", "contactEmail", "contactFullName", "message", "show",
-    #
-    # ]
-
+    df_activities = pd.DataFrame()
+    # create activities summary sheet
     wb = open_workbook(gc, "CambristiActivitySheetId")
     ws = open_worksheet(wb, "Activities")
     _, token = get_user_pwd("cambristiApiToken")
+
     all_activities = fetch_data(config['cambristi']['activities_endpoint'], token)
+    df_all_activities = pd.DataFrame(all_activities["items"]).fillna('').astype("string")
+
+    members = fetch_data(config['cambristi']['members_endpoint'], token)
+    df_members = pd.DataFrame(members["items"]).fillna('').astype("string")
+
     activities = {"items": []}
-    if all_activities:
 
-        for item in all_activities["items"]:
-            item2 = {"activityName": item["title"],
-                     "activityType": item["typeActivite"],
-                     "date": item["dateDebut"].split("T")[0],
-                     "location": item["nomLieu"],
-                     "address": item["lieu"]["formatted"],
-                     "responsibles": item["adminEmail"] + ", " + item["adminEmail1"]}
-            activities["items"].append(item2)
+    # just the most important fields
+    for item in all_activities["items"]:
+        item2 = {"activityName": item["title"],
+                 "activityType": item["typeActivite"],
+                 "date": item["dateDebut"].split("T")[0],
+                 "location": item["nomLieu"],
+                 "address": item["lieu"]["formatted"],
+                 "responsibles": item["adminEmail"] + ", " + item["adminEmail1"]}
+        activities["items"].append(item2)
 
-        df_activities = pd.DataFrame(activities["items"]).fillna('').astype("string")
-        # columns = ["activityName", "activityType", "date", "location", "address", "responsibles"]
-        columns = activities["items"][0].keys()
-        df_activities = df_activities[columns]
-        if not test_mode: update_data(ws, df_activities, "A1", columns)
+    # create a dataframe from the list of dictionaries
+    df_activities = pd.DataFrame(activities["items"]).fillna('').astype("string")
+    # columns = ["activityName", "activityType", "date", "location", "address", "responsibles"]
+    columns = activities["items"][0].keys()
+    df_activities = df_activities[columns]
+    # and update the sheet
+    update_data(ws, df_activities, "A1", columns)
 
+    # Get now the groups and participants
     groups = fetch_data(config['cambristi']['groups_endpoint'], token)
     df_groups = pd.DataFrame(groups["items"]).fillna('').astype("string")
     columns = groups["items"][0].keys()
     df_groups = df_groups[columns]
 
-    participants = fetch_data(config['cambristi']['participants_endpoint'], token)
-    # participants = {"items": []}
-    # if data:
-    #
-    #     for item in data["items"]:
-    #         item2 = {
-    #             "participantName": item["prenom"] + " " + item["nom"],
-    #             "participantEmail": item["email"],
-    #             "memberId": item["memberId"],
-    #             "planEventId": item["paymtEventId"] if  "paymtEventId" in item else "",
-    #             "stageId": item["stageId"],
-    #             "stageName": item["stageName"],
-    #             'groupId': item["groupId"],
-    #             "groupName": item["groupName"],
-    #             'instrument': item["instrument"],
-    #             'level': item["level"] if "level" in item else "",
-    #             "isYoung": item["isYoung"] if "isYoung" in item else "",
-    #             "isCotiPaid": item["isCotipaid"] if "isCotipaid" in item else "",
-    #             'paidAmount': item["paidAmount"] if "paidAmount" in item else "",
-    #             'note': item["note"] if "note" in item else "",
-    #         }
-    #         participants["items"].append(item2)
+    all_participants = fetch_data(config['cambristi']['participants_endpoint'], token)
+    participants = {"items": []}
+    if all_participants:
+        # ensure to have all fields populated
+        for item in all_participants["items"]:
+            item2 = {
+                "participantName": item["prenom"] + " " + item["nom"],
+                "participantEmail": item["email"],
+                "memberId": item["memberId"],
+                "planEventId": item["paymtEventId"] if "paymtEventId" in item else "",
+                "stageId": item["stageId"],
+                "stageName": item["stageName"],
+                'groupId': item["groupId"],
+                "groupName": item["groupName"],
+                'instrument': item["instrument"],
+                'level': item["level"] if "level" in item else "",
+                "isYoung": item["isYoung"] if "isYoung" in item else False,
+                "isCotiPaid": item["isCotipaid"] if "isCotipaid" in item else False,
+                # 'paidAmount': item["paidAmount"] if "paidAmount" in item else "",
+                'note': item["note"] if "note" in item else "",
+            }
+            participants["items"].append(item2)
 
     df_participants = pd.DataFrame(participants["items"]).fillna('').astype("string")
     columns = participants["items"][0].keys()
     df_participants = df_participants[columns]
+
+    # Start filling or creating one sheet per activity
+    for _, activity in df_all_activities.iterrows():
+        try:
+            ws = wb.worksheet(activity.title)
+        except gspread.exceptions.WorksheetNotFound:
+            ws = wb.add_worksheet(activity.title, 100, 20)
+
+        # filter the groups on the current activity
+        df_sub_groups = df_groups[df_groups['stageId'] == activity._id]
+        columns = ['Group', 'IsConfirmed', 'Responsible', 'Work to play', 'Duration', 'Musicians']
+        # todo Develop musicians and instruments lists
+        #
+        data = df_sub_groups[['title', 'isConfirmed', 'responsibleEmail', 'workToPlay', 'duration', 'musicians']]
+        update_data(ws, data, "A1", columns)
+        # todo format title & columns width
+
+
 
     log('info', 'Activities Sheet updated to Google Sheet')
 
