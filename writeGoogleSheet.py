@@ -15,6 +15,7 @@ import requests
 import yaml
 from geopy.geocoders import TomTom
 from getSecrets import get_secret, get_user_pwd
+from gspread_formatting import *
 from oauth2client.service_account import ServiceAccountCredentials
 
 test_mode = False
@@ -362,7 +363,6 @@ def upd_activities_to_google_sheet(gc):
     wb = open_workbook(gc, "CambristiActivitySheetId")
     ws = open_worksheet(wb, "Activities")
     _, token = get_user_pwd("cambristiApiToken")
-
     all_activities = fetch_data(config['cambristi']['activities_endpoint'], token)
     df_all_activities = pd.DataFrame(all_activities["items"]).fillna('').astype("string")
 
@@ -401,6 +401,7 @@ def upd_activities_to_google_sheet(gc):
         # ensure to have all fields populated
         for item in all_participants["items"]:
             item2 = {
+                "id": item["_id"],
                 "participantName": item["prenom"] + " " + item["nom"],
                 "participantEmail": item["email"],
                 "memberId": item["memberId"],
@@ -424,6 +425,8 @@ def upd_activities_to_google_sheet(gc):
 
     # Start filling or creating one sheet per activity
     for _, activity in df_all_activities.iterrows():
+        if int(activity.dateDebut[:4]) < datetime.datetime.now().year: continue
+
         try:
             ws = wb.worksheet(activity.title)
         except gspread.exceptions.WorksheetNotFound:
@@ -432,12 +435,25 @@ def upd_activities_to_google_sheet(gc):
         # filter the groups on the current activity
         df_sub_groups = df_groups[df_groups['stageId'] == activity._id]
         columns = ['Group', 'IsConfirmed', 'Responsible', 'Work to play', 'Duration', 'Musicians']
-        # todo Develop musicians and instruments lists
-        #
+
+        def fmt_musicians(gr):
+            mlist = ""
+            for m in eval(gr.musicians):
+                p = df_participants[(df_participants['memberId'] == m) & (df_participants['stageId'] == activity._id)]
+                if len(p) > 0:
+                    mlist += p.participantName.values[0] + ' (' + p.participantEmail.values[0] + ') ' + ', ' + \
+                             p.instrument.values[0] + '\n'
+            gr.musicians = mlist
+            return gr
+
+        df_sub_groups = df_sub_groups.apply(fmt_musicians, axis=1)
         data = df_sub_groups[['title', 'isConfirmed', 'responsibleEmail', 'workToPlay', 'duration', 'musicians']]
         update_data(ws, data, "A1", columns)
-        # todo format title & columns width
-
+        ws.format("A:Z", {
+            "verticalAlignment": "TOP",
+            "wrapStrategy": "WRAP",
+        })
+        set_column_widths(ws, [('C', 250), ('D', 500), ('F', 750)])
 
 
     log('info', 'Activities Sheet updated to Google Sheet')

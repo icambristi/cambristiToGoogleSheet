@@ -9,3 +9,4 @@ influxdb_client
 get_hc_secrets
 folium
 geopy
+gspread-formatting
