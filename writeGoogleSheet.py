@@ -454,6 +454,7 @@ def upd_activities_to_google_sheet(gc):
             "wrapStrategy": "WRAP",
         })
         set_column_widths(ws, [('C', 250), ('D', 500), ('F', 750)])
+        sleep(10)
 
 
     log('info', 'Activities Sheet updated to Google Sheet')
