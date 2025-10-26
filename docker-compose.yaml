@@ -1,11 +1,16 @@
 services:
-  wixgooglesheet:
+  wixgoogle:
     image: xmayeur/wixgooglesheet
-    container_name: wixgooglesheet
+    container_name: wixgoogle
     restart: always
     volumes:
-      - /root/.config/.vault:/root/.config/.vault
+      - /etc/vault:/root/.config/.vault
       - /root/.ssl:/root/.ssl
-      - /app/geomap.html:/var/www/html/cambristi_members/geomap.html
-    extra_hosts:
-      - "vault:192.168.129.5"
+    dns:
+      - 8.8.8.8
+    healthcheck:
+      test: "  $(curl -s -k  https://vault:8200/v1/sys/seal-status | jq '.sealed') = true ] || exit 0 "
+      interval: 5s
+      retries: 5
+      start_period: 30s
+      timeout: 10s
