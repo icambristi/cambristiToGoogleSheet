@@ -356,7 +356,7 @@ def upd_logs_google_sheet(gc, ndays):
 
     ws = open_sheet(gc, "cambristiLogSheetID")
     ws.clear()
-    ws.update(range_name="A1:D1", values=all_rows)
+    ws.update(range_name="A:D", values=all_rows)
     log('info', 'Logs updated to Google Sheet')
 
 
