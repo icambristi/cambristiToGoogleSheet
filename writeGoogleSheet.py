@@ -316,7 +316,10 @@ def upd_logs_google_sheet(gc, ndays):
         for record in table.records:
             rec = json.loads(record.get_value())
             q = jp.parse('jsonPayload.message')
-            mode = jp.parse('labels.viewMode').find(rec)[0].value
+            try:
+                mode = jp.parse('labels.viewMode').find(rec)[0].value
+            except IndexError:
+                continue
             if mode != 'Site':
                 continue
             for match in q.find(rec):
@@ -353,7 +356,7 @@ def upd_logs_google_sheet(gc, ndays):
 
     ws = open_sheet(gc, "cambristiLogSheetID")
     ws.clear()
-    ws.update(range_name="A1", values=all_rows)
+    ws.update(range_name="A1:D1", values=all_rows)
     log('info', 'Logs updated to Google Sheet')
 
 
