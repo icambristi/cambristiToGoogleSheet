@@ -4,6 +4,7 @@ import datetime
 import json
 import logging
 import sys
+import threading
 from time import sleep
 
 import folium
@@ -463,6 +464,12 @@ def upd_activities_to_google_sheet(gc):
     log('info', 'Activities Sheet updated to Google Sheet')
 
 
+# custom exception hook
+def custom_hook(args):
+    # report the failure
+    print(f'Thread failed: {args.exc_value}')
+
+
 if __name__ == '__main__':
     """
     Update the members, members plans and logs data to Google Sheets
@@ -492,15 +499,35 @@ if __name__ == '__main__':
         test_mode = True
 
     gc = gc_login()
+    threads = []
+    # set the exception hook
+    threading.excepthook = custom_hook
 
     if args.members:
-        upd_members_db_to_google_sheet(gc, args.geomap)
-        sleep(1)
+        # upd_members_db_to_google_sheet(gc, args.geomap)
+        # sleep(1)
+        t = threading.Thread(target=upd_members_db_to_google_sheet, args=(gc, args.geomap))
+        threads.append(t)
+
     if args.plans:
-        upd_members_plans_to_google_sheet(gc)
-        sleep(1)
+        # upd_members_plans_to_google_sheet(gc)
+        # sleep(1)
+        t = threading.Thread(target=upd_members_plans_to_google_sheet, args=(gc,))
+        threads.append(t)
+
     if args.log:
-        upd_logs_google_sheet(gc, args.days)
-        sleep(1)
+        # pd_logs_google_sheet(gc, args.days)
+        # sleep(1)
+        t = threading.Thread(target=upd_logs_google_sheet, args=(gc, args.days))
+        threads.append(t)
+
     if args.activities:
-        upd_activities_to_google_sheet(gc)
+        # upd_activities_to_google_sheet(gc)
+        t = threading.Thread(target=upd_activities_to_google_sheet, args=(gc,))
+        threads.append(t)
+
+    for t in threads:
+        t.start()
+
+    for t in threads:
+        t.join()
