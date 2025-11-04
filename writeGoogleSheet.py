@@ -429,7 +429,8 @@ def upd_activities_to_google_sheet(gc):
 
     # Start filling or creating one sheet per activity
     for _, activity in df_all_activities.iterrows():
-        if int(activity.dateDebut[:4]) < datetime.datetime.now().year: continue
+        #
+        if datetime.datetime.strptime(activity.dateDebut, "%Y-%m-%d") < datetime.datetime.now(): continue
 
         try:
             ws = wb.worksheet(activity.title)
