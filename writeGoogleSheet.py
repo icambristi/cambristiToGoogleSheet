@@ -168,14 +168,24 @@ def fetch_data(url, token):
     :param token: str
     :return: dict
     """
-    headers = {'Accept': 'application/json', 'auth': token}
-    resp = requests.get(url, headers=headers)
-    if resp.status_code == 200:
-        return resp.json()
-    else:
-        log('error', f'Error fetching data: {resp.status_code}')
-        return None
+    n = max_tries
+    while n > 0:
+        try:
+            headers = {'Accept': 'application/json', 'auth': token}
+            resp = requests.get(url, headers=headers)
+            if resp.status_code == 200:
+                return resp.json()
+            else:
+                log('error', f'Error fetching data: {resp.status_code}')
+                return None
 
+        except Exception as e:
+            sleep(60)
+            n -= 1
+            log('error', f'Retrying fetching data: {e}')
+            continue
+
+    return None
 
 def geomap_address(df):
     """
