@@ -100,13 +100,13 @@ def gc_login():
     while n > 0:
         try:
             creds = ServiceAccountCredentials.from_json_keyfile_dict(get_secret("cambristiGoogleServiceAccount"), scope)
-            break
+            return gspread.authorize(creds)
         except Exception as e:
             sleep(60)
             n -= 1
             continue
 
-    return gspread.authorize(creds)
+    return None
 
 
 def open_sheet(client, ws_id, sheet=None):
