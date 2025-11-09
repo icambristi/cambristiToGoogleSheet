@@ -529,7 +529,7 @@ if __name__ == '__main__':
     gc = gc_login()
     threads = []
     # set the exception hook
-    threading.excepthook = custom_hook
+    # threading.excepthook = custom_hook
 
     if args.members:
         # upd_members_db_to_google_sheet(gc, args.geomap)
