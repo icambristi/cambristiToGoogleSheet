@@ -35,6 +35,7 @@ def load_config():
 
 
 config = load_config()
+max_tries = config['google']['max_tries']
 
 
 def log(severity, msg):
@@ -95,7 +96,16 @@ def gc_login():
              'https://spreadsheets.google.com/feeds',
              'https://www.googleapis.com/auth/drive']
 
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(get_secret("cambristiGoogleServiceAccount"), scope)
+    n = max_tries
+    while n > 0:
+        try:
+            creds = ServiceAccountCredentials.from_json_keyfile_dict(get_secret("cambristiGoogleServiceAccount"), scope)
+            break
+        except Exception as e:
+            sleep(60)
+            n -= 1
+            continue
+
     return gspread.authorize(creds)
 
 
@@ -127,10 +137,6 @@ def open_workbook(client, ws_id):
     """
     _, spreadsheet_id = get_user_pwd(ws_id)
     return client.open_by_key(spreadsheet_id)
-    # try:
-    #     return wb.worksheet(sheet) if sheet else wb.sheet1
-    # except gspread.exceptions.WorksheetNotFound:
-    #     return None
 
 
 def open_worksheet(wb, sheet):
@@ -241,6 +247,10 @@ def upd_members_db_to_google_sheet(gc, geomap=False):
     ]
 
     ws = open_sheet(gc, "cambristiMemberSheetID")
+    if not ws:
+        log('error', 'Member sheet not found')
+        return
+
     _, token = get_user_pwd("cambristiApiToken")
     data = fetch_data(config['cambristi']['members_endpoint'], token)
     if data:
@@ -272,6 +282,10 @@ def upd_members_plans_to_google_sheet(gc):
     ]
 
     ws = open_sheet(gc, "cambristiMembersPlanEventsSheetID")
+    if not ws:
+        log('error', 'Plan sheet not found')
+        return
+
     _, token = get_user_pwd("cambristiApiToken")
     data = fetch_data(config['cambristi']['orders_endpoint'], token)
     if data:
@@ -356,6 +370,9 @@ def upd_logs_google_sheet(gc, ndays):
                 all_rows.append(row)
 
     ws = open_sheet(gc, "cambristiLogSheetID")
+    if not ws:
+        log('error', 'Log sheet not found')
+        return
     ws.clear()
     ws.update(range_name="A1", values=all_rows)
     log('info', 'Logs updated to Google Sheet')
