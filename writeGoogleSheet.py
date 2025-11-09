@@ -103,9 +103,11 @@ def gc_login():
             return gspread.authorize(creds)
         except Exception as e:
             sleep(60)
+            log('error', f'Retrying connecting to Google Sheets: {e}')
             n -= 1
             continue
-
+    log('error', 'Error connecting to Google Sheets')
+    return None
     return None
 
 
@@ -185,6 +187,7 @@ def fetch_data(url, token):
             log('error', f'Retrying fetching data: {e}')
             continue
 
+    log('error', 'Error fetching data')
     return None
 
 def geomap_address(df):
