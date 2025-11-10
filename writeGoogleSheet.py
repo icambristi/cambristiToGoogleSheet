@@ -18,7 +18,9 @@ from geopy.geocoders import TomTom
 from getSecrets import get_secret, get_user_pwd
 from gspread_formatting import *
 from oauth2client.service_account import ServiceAccountCredentials
+from urllib3.exceptions import InsecureRequestWarning
 
+requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 test_mode = False
 
 
@@ -190,6 +192,7 @@ def fetch_data(url, token):
     log('error', 'Error fetching data')
     return None
 
+
 def geomap_address(df):
     """
     Map the address of members on a map
@@ -324,8 +327,8 @@ def upd_logs_google_sheet(gc, ndays):
 
     try:
         client = influxdb_client.InfluxDBClient(url=db_url, token=db_token, org=org,
-                                                default_configuration={"batch_size": 10000}
-                                                )
+                                                default_configuration={"batch_size": 10000},
+                                                verify_ssl=False)
     except Exception as e:
         logging.error(f'client {str(e)}')
         sys.exit(1)
@@ -490,7 +493,6 @@ def upd_activities_to_google_sheet(gc):
         })
         set_column_widths(ws, [('C', 250), ('D', 500), ('F', 750)])
         sleep(10)
-
 
     log('info', 'Activities Sheet updated to Google Sheet')
 
