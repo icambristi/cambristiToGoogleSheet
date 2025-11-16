@@ -6,7 +6,7 @@ oauth2client
 google-api-python-client
 jsonpath_ng
 influxdb_client
-get_hc_secrets
+getWixSecrets
 folium
 geopy
 gspread-formatting

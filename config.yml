@@ -10,6 +10,8 @@ cambristi:
   activities_endpoint: https://www.cambristi.com/_functions/activities/
   groups_endpoint: https://www.cambristi.com/_functions/groups/
   participants_endpoint: https://www.cambristi.com/_functions/participants/
+  config_endpoint: https://www.cambristi.com/_functions/cloudconfig/
+  secrets_endpoint: https://www.cambristi.com/_functions/secrets/
 
 geomap:
   index: /app/data/geomap.html

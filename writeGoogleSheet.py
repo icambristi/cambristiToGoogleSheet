@@ -105,7 +105,7 @@ def gc_login():
             return gspread.authorize(creds)
         except Exception as e:
             sleep(60)
-            log('error', f'Retrying connecting to Google Sheets: {e}')
+            log('error', f'Retrying connecting to Google Sheets')
             n -= 1
             continue
     log('error', 'Error connecting to Google Sheets')
@@ -186,7 +186,7 @@ def fetch_data(url, token):
         except Exception as e:
             sleep(60)
             n -= 1
-            log('error', f'Retrying fetching data: {e}')
+            log('error', f'Retrying fetching data')
             continue
 
     log('error', 'Error fetching data')
