@@ -253,7 +253,8 @@ def upd_members_db_to_google_sheet(gc, geomap=False):
     :return
     """
     columns = [
-        "title", "_owner", "_createdDate", "_updatedDate", "email", "nom", "prenom", "cotisationExpiration",
+        "title", "_owner", "_createdDate", "_updatedDate", "email", "emailBounced", "nom", "prenom",
+        "cotisationExpiration",
         "instrument1", "categorie1", "instrument2", "categorie2", "prefR", "prefS", "prefT", "prefO",
         "adresseRue", "adresseNumero", "adresseBoite", "adresseCp", "adresseVille", "adressePays",
         "telMobC", "telMobP", "telMobN", "telHomeC", "telHomeP", "telHomeN", "telWorkC", "telWorkP",
