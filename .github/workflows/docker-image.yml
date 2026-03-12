@@ -13,6 +13,6 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Build the Docker image
       run: docker buildx build --platform linux/amd64,linux/arm64 -t xmayeur/wixgooglesheet . --push
