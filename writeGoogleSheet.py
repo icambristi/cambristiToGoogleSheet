@@ -31,9 +31,11 @@ def load_config():
 
     """
     try:
-        return yaml.safe_load(open('/app/config.yml'))
+        with open('/app/config.yml') as f:
+            return yaml.safe_load(f)
     except FileNotFoundError:
-        return yaml.safe_load(open('config.yml'))
+        with open('config.yml') as f:
+            return yaml.safe_load(f)
 
 
 config = load_config()
