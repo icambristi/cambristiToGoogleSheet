@@ -239,7 +239,7 @@ def geomap_address(df):
                 icon=folium.Icon(color="red"),
             ).add_to(m)
 
-        except:
+        except Exception:
             print('ERROR', "geocode error for " + r["prenom"] + " " + r["nom"] + ":  " + address)
             continue
         # log('INFO', r["prenom"] + " " + r["nom"])
