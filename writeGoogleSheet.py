@@ -112,7 +112,6 @@ def gc_login():
             continue
     log('error', 'Error connecting to Google Sheets')
     return None
-    return None
 
 
 def open_sheet(client, ws_id, sheet=None):
@@ -137,7 +136,6 @@ def open_workbook(client, ws_id):
     Open a Google Sheet
     :param client: gspread.Client
     :param ws_id: str
-    :param sheet: str
     :return: gspread.Worksheet
 
     """
@@ -239,7 +237,7 @@ def geomap_address(df):
                 icon=folium.Icon(color="red"),
             ).add_to(m)
 
-        except:
+        except Exception:
             print('ERROR', "geocode error for " + r["prenom"] + " " + r["nom"] + ":  " + address)
             continue
         # log('INFO', r["prenom"] + " " + r["nom"])
@@ -280,8 +278,8 @@ def upd_members_db_to_google_sheet(gc, geomap=False):
             # df_filtered = df[df['cotisationExpiration'] != '']
             today = datetime.datetime.now(datetime.UTC)
             df['cotisationExpirationDate'] = pd.to_datetime(df['cotisationExpiration'])
-            df['cotisationExpirationnDays'] = (df['cotisationExpirationDate'] - today).dt.days
-            df = df[df['cotisationExpirationnDays'] > 0]
+            df['cotisationExpirationDays'] = (df['cotisationExpirationDate'] - today).dt.days
+            df = df[df['cotisationExpirationDays'] > 0]
             geomap_address(df)
 
         log('info', 'Members updated to Google Sheet')
@@ -466,7 +464,12 @@ def upd_activities_to_google_sheet(gc):
     # Start filling or creating one sheet per activity
     for _, activity in df_all_activities.iterrows():
         #
-        if datetime.datetime.strptime(activity.dateDebut, "%Y-%m-%d") < datetime.datetime.now(): continue
+        if datetime.datetime.combine(
+                datetime.datetime.strptime(activity.dateDebut, "%Y-%m-%d").date(),
+                datetime.time.min,
+                tzinfo=datetime.timezone.utc,
+        ) < datetime.datetime.now(datetime.timezone.utc):
+            continue
 
         try:
             ws = wb.worksheet(activity.title)
