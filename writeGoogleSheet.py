@@ -466,7 +466,12 @@ def upd_activities_to_google_sheet(gc):
     # Start filling or creating one sheet per activity
     for _, activity in df_all_activities.iterrows():
         #
-        if datetime.datetime.strptime(activity.dateDebut, "%Y-%m-%d") < datetime.datetime.now(): continue
+        if datetime.datetime.combine(
+                datetime.datetime.strptime(activity.dateDebut, "%Y-%m-%d").date(),
+                datetime.time.min,
+                tzinfo=datetime.timezone.utc,
+        ) < datetime.datetime.now(datetime.timezone.utc):
+            continue
 
         try:
             ws = wb.worksheet(activity.title)
