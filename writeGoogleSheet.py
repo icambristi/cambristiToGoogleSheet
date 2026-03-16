@@ -137,7 +137,6 @@ def open_workbook(client, ws_id):
     Open a Google Sheet
     :param client: gspread.Client
     :param ws_id: str
-    :param sheet: str
     :return: gspread.Worksheet
 
     """
