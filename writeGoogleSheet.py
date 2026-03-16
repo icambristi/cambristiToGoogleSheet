@@ -112,7 +112,6 @@ def gc_login():
             continue
     log('error', 'Error connecting to Google Sheets')
     return None
-    return None
 
 
 def open_sheet(client, ws_id, sheet=None):
