@@ -112,7 +112,6 @@ def gc_login():
             continue
     log('error', 'Error connecting to Google Sheets')
     return None
-    return None
 
 
 def open_sheet(client, ws_id, sheet=None):
@@ -163,8 +162,24 @@ def update_data(ws, df, range, columns):
 
     """
 
-    ws.clear()
+    if range == "A1":
+        ws.clear()
+    else:
+        ws.batch_clear([range])
+
     ws.update(range_name=range, values=[df.columns.values.tolist()] + df.values.tolist())
+
+    if range != "A1":
+        ws.update(range_name="A16", values=[["Writes your notes below this line..."]])
+        ws.format("A16:F16", {
+            "backgroundColor": {
+                "red": 1.0,
+                "green": 1.0,
+                "blue": 0.0
+            }
+        })
+        ws.format('A16', {"verticalAlignment": "TOP",
+                          "wrapStrategy": "OVERFLOW_CELL"})
 
 
 def fetch_data(url, token):
@@ -409,6 +424,9 @@ def upd_activities_to_google_sheet(gc):
     members = fetch_data(config['cambristi']['members_endpoint'], token)
     df_members = pd.DataFrame(members["items"]).fillna('').astype("string")
 
+    orders = fetch_data(config['cambristi']['orders_endpoint'], token)
+    df_orders = pd.DataFrame(orders["items"]).fillna('').astype("string")
+
     activities = {"items": []}
 
     # just the most important fields
@@ -440,8 +458,10 @@ def upd_activities_to_google_sheet(gc):
     if all_participants:
         # ensure to have all fields populated
         for item in all_participants["items"]:
+
             item2 = {
                 "id": item["_id"],
+                "member": is_member(item, df_members),
                 "participantName": item["prenom"] + " " + item["nom"],
                 "participantEmail": item["email"],
                 "memberId": item["memberId"],
@@ -453,7 +473,7 @@ def upd_activities_to_google_sheet(gc):
                 'instrument': item["instrument"],
                 'level': item["level"] if "level" in item else "",
                 "isYoung": item["isYoung"] if "isYoung" in item else False,
-                "isCotiPaid": item["isCotipaid"] if "isCotipaid" in item else False,
+                "isCotiPaid": is_coti_paid(item, df_orders),
                 # 'paidAmount': item["paidAmount"] if "paidAmount" in item else "",
                 'note': item["note"] if "note" in item else "",
             }
@@ -482,20 +502,24 @@ def upd_activities_to_google_sheet(gc):
             for m in eval(gr.musicians):
                 p = df_participants[(df_participants['memberId'] == m) & (df_participants['stageId'] == activity._id)]
                 if len(p) > 0:
-                    mlist += p.participantName.values[0] + ' (' + p.participantEmail.values[0] + ') ' + ', ' + \
+                    paid = ' [25€] ' if (p.isCotiPaid.values[0] == "False") else ' [ ok ] '
+                    mbr = ' [Mbre] ' if (p.member.values[0] == "True") else ' [Extrn] '
+                    mlist += mbr + paid + p.participantName.values[0] + ' (' + p.participantEmail.values[
+                        0] + ') ' + ', ' + \
                              p.instrument.values[0] + '\n'
             gr.musicians = mlist
             return gr
 
         df_sub_groups = df_sub_groups.apply(fmt_musicians, axis=1)
         data = df_sub_groups[['title', 'isConfirmed', 'responsibleEmail', 'workToPlay', 'duration', 'musicians']]
-        update_data(ws, data, "A1", columns)
+        update_data(ws, data, "A1:F15", columns)
         ws.format("A:Z", {
             "verticalAlignment": "TOP",
             "wrapStrategy": "WRAP",
         })
         set_column_widths(ws, [('C', 250), ('D', 500), ('F', 750)])
-        sleep(10)
+
+        sleep(3)
 
     log('info', 'Activities Sheet updated to Google Sheet')
 
@@ -505,6 +529,24 @@ def custom_hook(args):
     # report the failure
     print(f'Thread failed: {args.exc_value}')
 
+
+def is_coti_paid(item, df_orders):
+    orders = df_orders[(df_orders.emailMembre == item["email"]) & (df_orders.planName.str.contains("Cotisation"))]
+    now = datetime.datetime.now().date()
+    for _, order in orders.iterrows():
+        valid_until = datetime.datetime.fromisoformat(order.validUntil).date()
+        diff = (valid_until - now).days
+        if diff > 0:
+            return "True"
+    return "False"
+
+
+def is_member(item, df_members):
+    row = df_members[df_members.email == item["email"]]
+    if len(row) == 0:
+        return "False"
+    title = df_members[df_members.email == item["email"]]["title"].values[0]
+    return "True" if title == "member" else "False"
 
 if __name__ == '__main__':
     """
