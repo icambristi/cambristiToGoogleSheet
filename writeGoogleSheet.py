@@ -517,7 +517,7 @@ def upd_activities_to_google_sheet(gc):
         df_sub_groups = df_sub_groups.apply(fmt_musicians, axis=1)
         data = df_sub_groups[['title', 'isConfirmed', 'responsibleEmail', 'workToPlay', 'duration', 'musicians']]
         update_data(ws, data, "A1:F15", columns)
-        ws.format("A:Z", {
+        ws.format("A1:F15", {
             "verticalAlignment": "TOP",
             "wrapStrategy": "WRAP",
         })
