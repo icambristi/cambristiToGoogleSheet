@@ -31,19 +31,17 @@ jobs:
           tags: xmayeur/wixgooglesheet:latest
 
   remote_command_job:
+    name: Deploy on remote server
     runs-on: ubuntu-latest
-    name: SSH Remote command
+    needs: build
     steps:
-      - name: SSH Deployer
-        uses: msatbsx/ssh-and-run-your-script-on-remote-host@v0.1.1 # replace with current tag, avoid using main or latest
-        id: runner # important, used below in steps.runner...
+      - name: Deploy on remote server
+        uses: favware/ssh-remote-action@v1
         with:
           host: ${{ secrets.HOST }}
           port: ${{ secrets.PORT }}
-          user: xavier
           key: ${{ secrets.SSH_KEY }}
+          username: ${{ secrets.USERNAME }}
           command: |
             sudo docker pull xmayeur/wixgooglesheet && \
             sudo docker compose -f /root/docker-compose.yml up -d wixgoogle
-      - name: Get the outputs
-        run: echo "The time was ${{ steps.runner.outputs.time }}"
