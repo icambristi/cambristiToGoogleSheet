@@ -153,7 +153,7 @@ def open_worksheet(wb, sheet):
         return None
 
 
-def update_data(ws, df, range, columns):
+def update_data(ws, df, range):
     """
     Update a Google Sheet with data
     :param ws: gspread.Worksheet
@@ -291,7 +291,7 @@ def upd_members_db_to_google_sheet(gc, geomap=False):
     if data:
         df = pd.DataFrame(data["items"]).fillna('').astype("string")
         df = df[columns]
-        update_data(ws, df, "A1", columns)
+        update_data(ws, df, "A1")
         if geomap:
             today = datetime.datetime.now(datetime.UTC)
             df['cotisationExpirationDate'] = pd.to_datetime(df['cotisationExpiration'])
@@ -325,7 +325,7 @@ def upd_members_plans_to_google_sheet(gc):
     if data:
         df = pd.DataFrame(data["items"]).fillna('').astype("string")
         df = df[columns]
-        update_data(ws, df, "A1", columns)
+        update_data(ws, df, "A1")
         log('info', 'Plans updated to Google Sheet')
 
 
@@ -395,7 +395,8 @@ def upd_logs_google_sheet(gc, ndays):
                     if severity == "" and isinstance(_msg, dict):
                         severity = _msg['severity'] if 'severity' in _msg else ""
                         module = module + ' - ' + _msg['module'] + ' line:' + line
-                        _msg = _msg['message'] if 'message' in _msg else "" + _msg['event'] if 'event' in _msg else ""
+                        _msg = _msg['message'] if 'message' in _msg else ""
+                        _msg += _msg['event'] if 'event' in _msg else ""
                     if 'Error' in _msg:
                         severity = 'ERROR'
                 except KeyError as e:
@@ -410,6 +411,20 @@ def upd_logs_google_sheet(gc, ndays):
     ws.clear()
     ws.update(range_name="A1", values=all_rows)
     log('info', 'Logs updated to Google Sheet')
+
+
+def fmt_musicians(gr, act, df_participants):
+    mlist = ""
+    for m in eval(gr.musicians):
+        p = df_participants[(df_participants['memberId'] == m) & (df_participants['stageId'] == act._id)]
+        if len(p) > 0:
+            paid = ' [25€] ' if (p.isCotiPaid.values[0] == "False") else ' [ ok ] '
+            mbr = ' [Mbre] ' if (p.member.values[0] == "True") else ' [Extrn] '
+            mlist += mbr + paid + p.participantName.values[0] + ' (' + p.participantEmail.values[
+                0] + ') ' + ', ' + \
+                     p.instrument.values[0] + '\n'
+    gr.musicians = mlist
+    return gr
 
 
 def upd_activities_to_google_sheet(gc):
@@ -444,7 +459,7 @@ def upd_activities_to_google_sheet(gc):
     columns = activities["items"][0].keys()
     df_activities = df_activities[columns]
     # and update the sheet
-    update_data(ws, df_activities, "A1", columns)
+    update_data(ws, df_activities, "A1")
 
     # Get now the groups and participants
     groups = fetch_data(config['cambristi']['groups_endpoint'], token)
@@ -454,29 +469,28 @@ def upd_activities_to_google_sheet(gc):
 
     all_participants = fetch_data(config['cambristi']['participants_endpoint'], token)
     participants = {"items": []}
-    if all_participants:
-        # ensure to have all fields populated
-        for item in all_participants["items"]:
 
-            item2 = {
-                "id": item["_id"],
-                "member": is_member(item, df_members),
-                "participantName": item["prenom"] + " " + item["nom"],
-                "participantEmail": item["email"],
-                "memberId": item["memberId"],
-                "planEventId": item["paymtEventId"] if "paymtEventId" in item else "",
-                "stageId": item["stageId"],
-                "stageName": item["stageName"],
-                'groupId': item["groupId"],
-                "groupName": item["groupName"],
-                'instrument': item["instrument"],
-                'level': item["level"] if "level" in item else "",
-                "isYoung": item["isYoung"] if "isYoung" in item else False,
-                "isCotiPaid": is_coti_paid(item, df_orders),
-                # 'paidAmount': item["paidAmount"] if "paidAmount" in item else "",
-                'note': item["note"] if "note" in item else "",
-            }
-            participants["items"].append(item2)
+    # ensure to have all fields populated
+    for item in all_participants["items"]:
+        item2 = {
+            "id": item["_id"],
+            "member": is_member(item, df_members),
+            "participantName": item["prenom"] + " " + item["nom"],
+            "participantEmail": item["email"],
+            "memberId": item["memberId"],
+            "planEventId": item["paymtEventId"] if "paymtEventId" in item else "",
+            "stageId": item["stageId"],
+            "stageName": item["stageName"],
+            'groupId': item["groupId"],
+            "groupName": item["groupName"],
+            'instrument': item["instrument"],
+            'level': item["level"] if "level" in item else "",
+            "isYoung": item["isYoung"] if "isYoung" in item else False,
+            "isCotiPaid": is_coti_paid(item, df_orders),
+            # 'paidAmount': item["paidAmount"] if "paidAmount" in item else "",
+            'note': item["note"] if "note" in item else "",
+        }
+        participants["items"].append(item2)
 
     df_participants = pd.DataFrame(participants["items"]).fillna('').astype("string")
     columns = participants["items"][0].keys()
@@ -501,22 +515,9 @@ def upd_activities_to_google_sheet(gc):
         df_sub_groups = df_groups[df_groups['stageId'] == activity._id]
         columns = ['Group', 'IsConfirmed', 'Responsible', 'Work to play', 'Duration', 'Musicians']
 
-        def fmt_musicians(gr, act):
-            mlist = ""
-            for m in eval(gr.musicians):
-                p = df_participants[(df_participants['memberId'] == m) & (df_participants['stageId'] == act._id)]
-                if len(p) > 0:
-                    paid = ' [25€] ' if (p.isCotiPaid.values[0] == "False") else ' [ ok ] '
-                    mbr = ' [Mbre] ' if (p.member.values[0] == "True") else ' [Extrn] '
-                    mlist += mbr + paid + p.participantName.values[0] + ' (' + p.participantEmail.values[
-                        0] + ') ' + ', ' + \
-                             p.instrument.values[0] + '\n'
-            gr.musicians = mlist
-            return gr
-
-        df_sub_groups = df_sub_groups.apply(fmt_musicians, axis=1)
+        df_sub_groups = df_sub_groups.apply(fmt_musicians, args=(activity, df_participants), axis=1)
         data = df_sub_groups[['title', 'isConfirmed', 'responsibleEmail', 'workToPlay', 'duration', 'musicians']]
-        update_data(ws, data, "A1:F15", columns)
+        update_data(ws, data, "A1:F15")
         ws.format("A1:F15", {
             "verticalAlignment": "TOP",
             "wrapStrategy": "WRAP",
@@ -559,9 +560,9 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-l", "--log", help="Get log files", action="store_true")
-    parser.add_argument("-m", "--members", help="Get log files", action="store_true")
-    parser.add_argument("-p", "--plans", help="Get log files", action="store_true")
-    parser.add_argument("-a", "--activities", help="Get log files", action="store_true")
+    parser.add_argument("-m", "--members", help="upload members data", action="store_true")
+    parser.add_argument("-p", "--plans", help="upload plans", action="store_true")
+    parser.add_argument("-a", "--activities", help="upload activities", action="store_true")
     parser.add_argument("-d", "--days", help="nr of days of log files", type=int)
     parser.add_argument("-g", "--geomap", help="Map members address on a map", action="store_true")
     parser.add_argument("-t", "--test", help="Test mode", action="store_true")
