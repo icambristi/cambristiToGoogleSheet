@@ -9,6 +9,7 @@ from time import sleep
 
 import folium
 import gspread
+import gspread_formatting as gf
 import influxdb_client
 import jsonpath_ng.ext as jp
 import pandas as pd
@@ -16,7 +17,6 @@ import requests
 import yaml
 from geopy.geocoders import TomTom
 from getSecrets import get_secret, get_user_pwd
-from gspread_formatting import *
 from oauth2client.service_account import ServiceAccountCredentials
 from urllib3.exceptions import InsecureRequestWarning
 
@@ -521,7 +521,7 @@ def upd_activities_to_google_sheet(gc):
             "verticalAlignment": "TOP",
             "wrapStrategy": "WRAP",
         })
-        set_column_widths(ws, [('C', 250), ('D', 500), ('F', 750)])
+        gf.set_column_widths(ws, [('C', 250), ('D', 500), ('F', 750)])
 
         sleep(3)
 
