@@ -3,4 +3,10 @@ name = "wixdbmemberstogooglesheet"
 version = "0.1.1"
 description = "Add your description here"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = ["pytest (>=9.0.3,<10.0.0)"]
+
+[poetry]
+package-mode = false
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

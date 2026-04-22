@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import datetime
+import hashlib
 import json
 import logging
 import sys
@@ -57,6 +58,21 @@ def log(severity, msg):
     else:
         logging.error(f"Invalid severity level: {severity}")
         logging.info(msg)
+
+    if 'logs' in config:
+        log_cfg = config['logs']
+        url = log_cfg.get('url')
+        username = log_cfg.get('username')
+        tag = log_cfg.get('tag')
+        if url and username:
+            pb_hash = hashlib.sha256(username.encode()).hexdigest()
+            headers = {'Content-Type': 'application/json'}
+            data = {
+                'severity': severity,
+                'message': msg,
+                'timestamp': datetime.datetime.now().isoformat()
+            }
+            send_log_request(url, pb_hash, tag, headers, data)
 
 
 def send_log_request(url, pb_hash, tag, headers, data):
@@ -623,7 +639,7 @@ if __name__ == '__main__':
         threads.append(t)
 
     if args.log:
-        if args.ndays:
+        if args.days:
             days = args.days
         else:
             days = config['logs']['days']

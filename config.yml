@@ -1,5 +1,5 @@
 logs:
-  url: https://cloud.mayeur.be:5123/log
+  url: https://cloud.cambristi.com:5123/log
   username: Cambristi Sushi RPI
   tag: wixtogoogle
   ndays: 15
