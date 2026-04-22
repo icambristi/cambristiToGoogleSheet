@@ -58,25 +58,12 @@ def log(severity, msg):
         logging.error(f"Invalid severity level: {severity}")
         logging.info(msg)
 
-    # hash_object = hashlib.sha256(config['logs']['username'].encode())
-    # pbHash = hash_object.hexdigest()
-    # url = config['logs']['url']
-    # tag = config['logs']['tag']
-    # headers = {"Content-Type": "application/json"}
-    # data = {
-    #     "timestamp": datetime.datetime.now().isoformat(),
-    #     "event_id": str(uuid.uuid4()),
-    #     "severity": severity,
-    #     "message": msg
-    # }
-    # send_log_request(url, pbHash, tag, headers, data)
 
-
-def send_log_request(url, pbHash, tag, headers, data):
+def send_log_request(url, pb_hash, tag, headers, data):
     """
     Send a log request to the logs API
     :param url: str
-    :param pbHash: str
+    :param pb_hash: str
     :param tag: str
     :param headers: dict
     :param data: dict
@@ -84,7 +71,7 @@ def send_log_request(url, pbHash, tag, headers, data):
 
     """
     try:
-        resp = requests.post(f'{url}?token={pbHash}&tag={tag}', headers=headers, json=data)
+        resp = requests.post(f'{url}?token={pb_hash}&tag={tag}', headers=headers, json=data)
         if resp.status_code != 201:
             logging.error(f"Error {resp.status_code}: {resp.text}")
     except Exception as e:
@@ -105,9 +92,9 @@ def gc_login():
         try:
             creds = ServiceAccountCredentials.from_json_keyfile_dict(get_secret("cambristiGoogleServiceAccount"), scope)
             return gspread.authorize(creds)
-        except Exception as e:
+        except Exception:
             sleep(60)
-            log('error', f'Retrying connecting to Google Sheets')
+            log('error', 'Retrying connecting to Google Sheets')
             n -= 1
             continue
     log('error', 'Error connecting to Google Sheets')
@@ -123,11 +110,27 @@ def open_sheet(client, ws_id, sheet=None):
     :return: gspread.Worksheet
 
     """
+    n_try = 3
+    timeout = 6000
     _, spreadsheet_id = get_user_pwd(ws_id)
     wb = client.open_by_key(spreadsheet_id)
     try:
         return wb.worksheet(sheet) if sheet else wb.sheet1
     except gspread.exceptions.WorksheetNotFound:
+        return None
+    except gspread.exceptions.APIError as e:
+        log('error', f'Error opening sheet: {e}')
+        while n_try > 0:
+            sleep(timeout)
+            n_try -= 1
+            wb = client.open_by_key(spreadsheet_id)
+            try:
+                return wb.worksheet(sheet) if sheet else wb.sheet1
+            except gspread.exceptions.WorksheetNotFound:
+                return None
+            except gspread.exceptions.APIError as e:
+                log('error', f'Retrying - Error opening sheet: {e}')
+                continue
         return None
 
 
@@ -199,10 +202,10 @@ def fetch_data(url, token):
                 log('error', f'Error fetching data: {resp.status_code}')
                 return None
 
-        except Exception as e:
+        except requests.exceptions.RequestException:
             sleep(60)
             n -= 1
-            log('error', f'Retrying fetching data')
+            log('error', 'Retrying fetching data')
             continue
 
     log('error', 'Error fetching data')
@@ -217,7 +220,6 @@ def geomap_address(df):
     """
     key = get_secret("TomTomAPI")["key"]
 
-    # geolocator = Nominatim(user_agent="my_geocoder")
     geolocator = TomTom(api_key=key, timeout=10)
 
     location = geolocator.geocode("Bruxelles, Belgique")
@@ -291,7 +293,6 @@ def upd_members_db_to_google_sheet(gc, geomap=False):
         df = df[columns]
         update_data(ws, df, "A1", columns)
         if geomap:
-            # df_filtered = df[df['cotisationExpiration'] != '']
             today = datetime.datetime.now(datetime.UTC)
             df['cotisationExpirationDate'] = pd.to_datetime(df['cotisationExpiration'])
             df['cotisationExpirationDays'] = (df['cotisationExpirationDate'] - today).dt.days
@@ -440,7 +441,6 @@ def upd_activities_to_google_sheet(gc):
 
     # create a dataframe from the list of dictionaries
     df_activities = pd.DataFrame(activities["items"]).fillna('').astype("string")
-    # columns = ["activityName", "activityType", "date", "location", "address", "responsibles"]
     columns = activities["items"][0].keys()
     df_activities = df_activities[columns]
     # and update the sheet
@@ -501,10 +501,10 @@ def upd_activities_to_google_sheet(gc):
         df_sub_groups = df_groups[df_groups['stageId'] == activity._id]
         columns = ['Group', 'IsConfirmed', 'Responsible', 'Work to play', 'Duration', 'Musicians']
 
-        def fmt_musicians(gr):
+        def fmt_musicians(gr, act):
             mlist = ""
             for m in eval(gr.musicians):
-                p = df_participants[(df_participants['memberId'] == m) & (df_participants['stageId'] == activity._id)]
+                p = df_participants[(df_participants['memberId'] == m) & (df_participants['stageId'] == act._id)]
                 if len(p) > 0:
                     paid = ' [25€] ' if (p.isCotiPaid.values[0] == "False") else ' [ ok ] '
                     mbr = ' [Mbre] ' if (p.member.values[0] == "True") else ' [Extrn] '
@@ -572,7 +572,6 @@ if __name__ == '__main__':
         args.members = True
         args.plans = True
         args.activities = True
-        # args.geomap = True
 
     if args.geomap:
         args.members = True
@@ -587,19 +586,16 @@ if __name__ == '__main__':
 
     if args.members:
         # upd_members_db_to_google_sheet(gc, args.geomap)
-        # sleep(1)
         t = threading.Thread(target=upd_members_db_to_google_sheet, args=(gc, args.geomap))
         threads.append(t)
 
     if args.plans:
         # upd_members_plans_to_google_sheet(gc)
-        # sleep(1)
         t = threading.Thread(target=upd_members_plans_to_google_sheet, args=(gc,))
         threads.append(t)
 
     if args.log:
         # pd_logs_google_sheet(gc, args.days)
-        # sleep(1)
         t = threading.Thread(target=upd_logs_google_sheet, args=(gc, args.days))
         threads.append(t)
 
