@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -29,3 +29,21 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: xmayeur/wixgooglesheet:latest
+
+  remote_command_job:
+    runs-on: ubuntu-latest
+    name: SSH Remote command
+    steps:
+      - name: SSH Deployer
+        uses: msatbsx/ssh-and-run-your-script-on-remote-host@v0.1.1 # replace with current tag, avoid using main or latest
+        id: runner # important, used below in steps.runner...
+        with:
+          host: ${{ secrets.HOST }}
+          port: ${{ secrets.PORT }}
+          user: xavier
+          key: ${{ secrets.SSH_KEY }}
+          command: |
+            sudo docker pull xmayeur/wixgooglesheet && \
+            sudo docker compose -f /root/docker-compose.yml up -d wixgoogle
+      - name: Get the outputs
+        run: echo "The time was ${{ steps.runner.outputs.time }}"
