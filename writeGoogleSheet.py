@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import datetime
+import hashlib
 import json
 import logging
 import sys
@@ -57,6 +58,21 @@ def log(severity, msg):
     else:
         logging.error(f"Invalid severity level: {severity}")
         logging.info(msg)
+
+    if 'logs' in config:
+        log_cfg = config['logs']
+        url = log_cfg.get('url')
+        username = log_cfg.get('username')
+        tag = log_cfg.get('tag')
+        if url and username:
+            pb_hash = hashlib.sha256(username.encode()).hexdigest()
+            headers = {'Content-Type': 'application/json'}
+            data = {
+                'severity': severity,
+                'message': msg,
+                'timestamp': datetime.datetime.now().isoformat()
+            }
+            send_log_request(url, pb_hash, tag, headers, data)
 
 
 def send_log_request(url, pb_hash, tag, headers, data):
@@ -329,27 +345,93 @@ def upd_members_plans_to_google_sheet(gc):
         log('info', 'Plans updated to Google Sheet')
 
 
+def db_connect(url, token, org):
+    try:
+        client = influxdb_client.InfluxDBClient(url=url, token=token, org=org,
+                                                default_configuration={"batch_size": 10000},
+                                                verify_ssl=False)
+        return client
+    except influxdb_client.client.exceptions.InfluxDBError as e:
+        logging.error('InfluxDB client error: %s', e)
+        sys.exit(1)
+
+
+def _parse_message_content(msg):
+    """Parse log message content if it is a JSON string."""
+    if isinstance(msg, str) and (msg.startswith('[') or msg.startswith('{')):
+        try:
+            return json.loads(msg)
+        except (json.JSONDecodeError, TypeError):
+            return msg
+    return msg
+
+
+def _extract_log_details(msg, rec):
+    """Extract severity, module, and message text from log record."""
+    hdr = msg[0] if isinstance(msg, list) and len(msg) == 1 else ""
+    module = hdr.get('module', "") if isinstance(hdr, dict) else ""
+    severity = hdr.get('severity', "") if isinstance(hdr, dict) else ""
+    line = ""
+
+    if 'sourceLocation' in rec:
+        module = rec['sourceLocation'].get('file', module)
+        line = f":{rec['sourceLocation']['line']}" if 'line' in rec['sourceLocation'] else ""
+
+    try:
+        _msg = msg[0].get('message', "") if len(msg) == 1 and isinstance(msg[0], dict) else msg
+        if severity == "" and isinstance(_msg, dict):
+            severity = _msg.get('severity', "")
+            module = f"{module} - {_msg.get('module', '')} line:{line}"
+            _msg = _msg.get('message', "") + _msg.get('event', "")
+        if isinstance(_msg, str) and 'Error' in _msg:
+            severity = 'ERROR'
+    except (KeyError, TypeError, IndexError):
+        _msg = msg
+
+    return severity, module, _msg
+
+
+def _process_log_record(record):
+    """
+    Process a single InfluxDB record and return list of rows to append.
+    """
+    try:
+        rec = json.loads(record.get_value())
+        mode = jp.parse('labels.viewMode').find(rec)[0].value
+    except (json.JSONDecodeError, TypeError, IndexError):
+        return []
+
+    if mode != 'Site':
+        return []
+
+    rows = []
+    q = jp.parse('jsonPayload.message')
+    for match in q.find(rec):
+        msg = _parse_message_content(match.value)
+
+        if isinstance(msg, str) and 'Running the code for' in msg:
+            continue
+
+        severity, module, _msg_text = _extract_log_details(msg, rec)
+        row = [rec.get('timestamp', ''), severity, module, str(_msg_text)[:512]]
+        rows.append(row)
+    return rows
+
+
 def upd_logs_google_sheet(gc, ndays):
     """
     Update the logs data to a Google Sheet
     :param gc: gspread.Client
+    :param ndays: number of days to look back
     :return
     """
-    if not ndays:
-        ndays = config['logs']['ndays']
     cfg = get_secret('InfluxDbApiToken')
     bucket = cfg['bucket']
     db_token = cfg['token']
     org = cfg['org']
     db_url = cfg['url']
 
-    try:
-        client = influxdb_client.InfluxDBClient(url=db_url, token=db_token, org=org,
-                                                default_configuration={"batch_size": 10000},
-                                                verify_ssl=False)
-    except Exception as e:
-        logging.error(f'client {str(e)}')
-        sys.exit(1)
+    client = db_connect(db_url, db_token, org)
 
     query_api = client.query_api()
     query = f"""from(bucket: "{bucket}")
@@ -363,46 +445,7 @@ def upd_logs_google_sheet(gc, ndays):
     all_rows = [['timestamp', 'severity', 'module', 'msg']]
     for table in tables:
         for record in table.records:
-            rec = json.loads(record.get_value())
-            q = jp.parse('jsonPayload.message')
-            try:
-                mode = jp.parse('labels.viewMode').find(rec)[0].value
-            except IndexError:
-                continue
-            if mode != 'Site':
-                continue
-            for match in q.find(rec):
-                msg = match.value
-                if msg[0] == '[' or msg[0] == "{":
-                    try:
-                        msg = json.loads(msg)
-                    except Exception:
-                        continue
-
-                if 'Running the code for' in msg:
-                    continue
-
-                hdr = msg[0] if isinstance(msg, list) and len(msg) == 1 else ""
-                module = hdr.get('module', "") if isinstance(hdr, dict) else ""
-                severity = hdr.get('severity', "") if isinstance(hdr, dict) else ""
-                line = ""
-                if 'sourceLocation' in rec:
-                    module = rec['sourceLocation']['file']
-                    line = f":{rec['sourceLocation']['line']}" if 'line' in rec['sourceLocation'] else ""
-
-                try:
-                    _msg = msg[0].get('message', "") if len(msg) == 1 and isinstance(msg[0], dict) else msg
-                    if severity == "" and isinstance(_msg, dict):
-                        severity = _msg['severity'] if 'severity' in _msg else ""
-                        module = module + ' - ' + _msg['module'] + ' line:' + line
-                        _msg = _msg['message'] if 'message' in _msg else ""
-                        _msg += _msg['event'] if 'event' in _msg else ""
-                    if 'Error' in _msg:
-                        severity = 'ERROR'
-                except KeyError as e:
-                    pass
-                row = [rec['timestamp'], severity, module, str(_msg)[:512]]
-                all_rows.append(row)
+            all_rows.extend(_process_log_record(record))
 
     ws = open_sheet(gc, "cambristiLogSheetID")
     if not ws:
@@ -596,8 +639,11 @@ if __name__ == '__main__':
         threads.append(t)
 
     if args.log:
-        # pd_logs_google_sheet(gc, args.days)
-        t = threading.Thread(target=upd_logs_google_sheet, args=(gc, args.days))
+        if args.days:
+            days = args.days
+        else:
+            days = config['logs']['days']
+        t = threading.Thread(target=upd_logs_google_sheet, args=(gc, days))
         threads.append(t)
 
     if args.activities:

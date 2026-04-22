@@ -30,8 +30,9 @@ class TestLogFunction(unittest.TestCase):
         # Vérification de l'appel à sha256 avec le bon argument
         mock_sha256.assert_called_once_with(b'test_user')
 
+    @patch('writeGoogleSheet.send_log_request')
     @patch('writeGoogleSheet.logging.info')
-    def test_log_calls_logging_info_correctly(self, mock_logging_info):
+    def test_log_calls_logging_info_correctly(self, mock_logging_info, mock_send_log_request):
         severity = "info"
         message = "Test logging call"
 
@@ -39,8 +40,9 @@ class TestLogFunction(unittest.TestCase):
 
         mock_logging_info.assert_called_once_with(message)
 
+    @patch('writeGoogleSheet.send_log_request')
     @patch('writeGoogleSheet.logging.error')
-    def test_log_handles_invalid_severity_gracefully(self, mock_logging_error):
+    def test_log_handles_invalid_severity_gracefully(self, mock_logging_error, mock_send_log_request):
         severity = "invalid_severity"
         message = "This should not break"
 
