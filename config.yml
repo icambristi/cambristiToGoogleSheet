@@ -1,8 +1,8 @@
-#logs:
+logs:
 #  url: https://cloud.cambristi.com:5123/log
 #  username: Cambristi Sushi RPI
 #  tag: wixtogoogle
-#  ndays: 15
+  ndays: 15
 
 cambristi:
   members_endpoint: https://www.cambristi.com/_functions/members/
