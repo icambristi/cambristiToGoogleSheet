@@ -294,7 +294,7 @@ def upd_members_db_to_google_sheet(gc, geomap=False):
         "telMobC", "telMobP", "telMobN", "telHomeC", "telHomeP", "telHomeN", "telWorkC", "telWorkP",
         "telWorkN", "anneeNaissance", "memberPic", "instrument1Fr", "instrument1Nl", "instrument1En",
         "instrument2Fr", "instrument2Nl", "instrument2En", "adressePaysFr", "adressePaysNl", "adressePaysEn",
-        "lastfeePaymentYear", "_id"
+        "lastfeePaymentYear", "_id", "membreEffectif"
     ]
 
     ws = open_sheet(gc, "cambristiMemberSheetID")
