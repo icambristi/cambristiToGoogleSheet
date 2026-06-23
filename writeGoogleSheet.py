@@ -72,7 +72,7 @@ def log(severity, msg):
                 'message': msg,
                 'timestamp': datetime.datetime.now().isoformat()
             }
-            send_log_request(url, pb_hash, tag, headers, data)
+            # send_log_request(url, pb_hash, tag, headers, data)
 
 
 def send_log_request(url, pb_hash, tag, headers, data):
@@ -556,16 +556,16 @@ def upd_activities_to_google_sheet(gc):
 
         # filter the groups on the current activity
         df_sub_groups = df_groups[df_groups['stageId'] == activity._id]
-        columns = ['Group', 'IsConfirmed', 'Responsible', 'Work to play', 'Duration', 'Musicians']
-
+        columns = ['title', 'isConfirmed', 'responsibleEmail', 'workToPlay', 'remarks', 'duration', 'musicians']
+        clen = len(columns)
         df_sub_groups = df_sub_groups.apply(fmt_musicians, args=(activity, df_participants), axis=1)
-        data = df_sub_groups[['title', 'isConfirmed', 'responsibleEmail', 'workToPlay', 'duration', 'musicians']]
-        update_data(ws, data, "A1:F15")
-        ws.format("A1:F15", {
+        data = df_sub_groups[columns]
+        update_data(ws, data, "A1:G15")
+        ws.format("A1:G15", {
             "verticalAlignment": "TOP",
             "wrapStrategy": "WRAP",
         })
-        gf.set_column_widths(ws, [('C', 250), ('D', 500), ('F', 750)])
+        gf.set_column_widths(ws, [('C', 250), ('D', 400), ('E', 300), ('G', 750)])
 
         sleep(3)
 
