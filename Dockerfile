@@ -25,4 +25,4 @@ RUN echo "${CRON_SPEC} python ${PROJ_DIR}/writeGoogleSheet.py >> ${LOG_FILE} 2>&
 RUN touch ${LOG_FILE} # Needed for the tail
 RUN crontab ${PROJ_DIR}/crontab
 RUN crontab -l
-CMD crond  && tail -f ${LOG_FILE}
+CMD ["sh", "-c", "crond && tail -f ${LOG_FILE}"]
