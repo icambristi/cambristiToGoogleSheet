@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.4] - 2026-07-01
+
+### Added
+- Full pytest suite for `writeGoogleSheet.py` (76 tests, 99% line coverage)
+- CI: Trivy vulnerability scan gates the Docker build — fails on CRITICAL/HIGH CVEs before the image is pushed to Docker Hub
+- Dependabot config for weekly updates to the Docker base image, Python deps, and GitHub Actions versions
+- GitHub secret scanning and push protection enabled (repo is now public)
+
+### Fixed
+- `upd_members_db_to_google_sheet`: comparing a tz-aware `datetime.now(UTC)` against tz-naive parsed `cotisationExpiration` raised `TypeError` whenever geomap ran on expiration strings without a UTC offset
+
+### Removed
+- `build.sh` untracked from git (kept local-only) — redundant with CI and leaked the deploy server's SSH host alias/port
+
 ## [0.1.3] - 2026-06-30
 
 ### Changed
