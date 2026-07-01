@@ -78,5 +78,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           username: ${{ secrets.USERNAME }}
           command: |
+            sudo docker stop wixgoogle && \
+            sudo docker rm -f wixgoogle && \
             sudo docker pull xmayeur/wixgooglesheet && \
             sudo docker compose -f /root/docker-compose.yml up -d wixgoogle
