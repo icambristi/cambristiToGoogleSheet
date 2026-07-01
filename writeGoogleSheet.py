@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import datetime
-import hashlib
 import json
 import logging
 import sys
@@ -59,22 +58,6 @@ def log(severity, msg):
         logging.error(f"Invalid severity level: {severity}")
         logging.info(msg)
 
-    if 'logs' in config:
-        log_cfg = config['logs']
-        url = log_cfg.get('url')
-        username = log_cfg.get('username')
-        tag = log_cfg.get('tag')
-        if url and username:
-            pb_hash = hashlib.sha256(username.encode()).hexdigest()
-            headers = {'Content-Type': 'application/json'}
-            data = {
-                'severity': severity,
-                'message': msg,
-                'timestamp': datetime.datetime.now().isoformat()
-            }
-            send_log_request(url, pb_hash, tag, headers, data)
-
-
 def send_log_request(url, pb_hash, tag, headers, data):
     """
     Send a log request to the logs API
@@ -91,7 +74,7 @@ def send_log_request(url, pb_hash, tag, headers, data):
         if resp.status_code != 201:
             logging.error(f"Error {resp.status_code}: {resp.text}")
     except Exception as e:
-        logging.error(e)
+        logging.exception(e)
 
 
 def gc_login():
@@ -310,7 +293,7 @@ def upd_members_db_to_google_sheet(gc, geomap=False):
         update_data(ws, df, "A1")
         if geomap:
             today = datetime.datetime.now(datetime.UTC)
-            df['cotisationExpirationDate'] = pd.to_datetime(df['cotisationExpiration'])
+            df['cotisationExpirationDate'] = pd.to_datetime(df['cotisationExpiration'], utc=True)
             df['cotisationExpirationDays'] = (df['cotisationExpirationDate'] - today).dt.days
             df = df[df['cotisationExpirationDays'] > 0]
             geomap_address(df)
@@ -352,13 +335,13 @@ def db_connect(url, token, org):
                                                 verify_ssl=False)
         return client
     except influxdb_client.client.exceptions.InfluxDBError as e:
-        logging.error('InfluxDB client error: %s', e)
+        logging.exception('InfluxDB client error: %s', e)
         sys.exit(1)
 
 
 def _parse_message_content(msg):
     """Parse log message content if it is a JSON string."""
-    if isinstance(msg, str) and (msg.startswith('[') or msg.startswith('{')):
+    if isinstance(msg, str) and msg.startswith(('[', '{')):
         try:
             return json.loads(msg)
         except (json.JSONDecodeError, TypeError):
@@ -501,6 +484,8 @@ def upd_activities_to_google_sheet(gc):
     df_activities = pd.DataFrame(activities["items"]).fillna('').astype("string")
     columns = activities["items"][0].keys()
     df_activities = df_activities[columns]
+    current_year = datetime.datetime.now().year
+    df_activities = df_activities[df_activities['date'].str[:4].astype(int) >= current_year]
     # and update the sheet
     update_data(ws, df_activities, "A1")
 
@@ -540,14 +525,9 @@ def upd_activities_to_google_sheet(gc):
     df_participants = df_participants[columns]
 
     # Start filling or creating one sheet per activity
+    current_year = datetime.datetime.now().year
+    df_all_activities = df_all_activities[df_all_activities['dateDebut'].str[:4].astype(int) >= current_year]
     for _, activity in df_all_activities.iterrows():
-        #
-        if datetime.datetime.combine(
-                datetime.datetime.strptime(activity.dateDebut, "%Y-%m-%d").date(),
-                datetime.time.min,
-                tzinfo=datetime.timezone.utc,
-        ) < datetime.datetime.now(datetime.timezone.utc):
-            continue
 
         try:
             ws = wb.worksheet(activity.title)
@@ -556,16 +536,15 @@ def upd_activities_to_google_sheet(gc):
 
         # filter the groups on the current activity
         df_sub_groups = df_groups[df_groups['stageId'] == activity._id]
-        columns = ['Group', 'IsConfirmed', 'Responsible', 'Work to play', 'Duration', 'Musicians']
-
+        columns = ['title', 'isConfirmed', 'responsibleEmail', 'workToPlay', 'remarks', 'duration', 'musicians']
         df_sub_groups = df_sub_groups.apply(fmt_musicians, args=(activity, df_participants), axis=1)
-        data = df_sub_groups[['title', 'isConfirmed', 'responsibleEmail', 'workToPlay', 'duration', 'musicians']]
-        update_data(ws, data, "A1:F15")
-        ws.format("A1:F15", {
+        data = df_sub_groups[columns]
+        update_data(ws, data, "A1:G15")
+        ws.format("A1:G15", {
             "verticalAlignment": "TOP",
             "wrapStrategy": "WRAP",
         })
-        gf.set_column_widths(ws, [('C', 250), ('D', 500), ('F', 750)])
+        gf.set_column_widths(ws, [('C', 250), ('D', 400), ('E', 300), ('G', 750)])
 
         sleep(3)
 
