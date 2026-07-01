@@ -293,7 +293,7 @@ def upd_members_db_to_google_sheet(gc, geomap=False):
         update_data(ws, df, "A1")
         if geomap:
             today = datetime.datetime.now(datetime.UTC)
-            df['cotisationExpirationDate'] = pd.to_datetime(df['cotisationExpiration'])
+            df['cotisationExpirationDate'] = pd.to_datetime(df['cotisationExpiration'], utc=True)
             df['cotisationExpirationDays'] = (df['cotisationExpirationDate'] - today).dt.days
             df = df[df['cotisationExpirationDays'] > 0]
             geomap_address(df)
