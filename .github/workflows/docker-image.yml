@@ -39,7 +39,7 @@ jobs:
           tags: xmayeur/wixgooglesheet:scan
 
       - name: Scan image for vulnerabilities
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: xmayeur/wixgooglesheet:scan
           format: sarif
