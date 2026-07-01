@@ -58,6 +58,23 @@ def log(severity, msg):
         logging.error(f"Invalid severity level: {severity}")
         logging.info(msg)
 
+def _retry_on_quota(fn, *args, max_tries=6, base_delay=15, **kwargs):
+    """
+    Call a gspread write method, retrying with backoff if the Sheets API
+    per-minute write quota (HTTP 429) is hit.
+    """
+    for attempt in range(max_tries):
+        try:
+            return fn(*args, **kwargs)
+        except gspread.exceptions.APIError as e:
+            if e.code == 429 and attempt < max_tries - 1:
+                delay = base_delay * (attempt + 1)
+                log('warning', f'Google Sheets write quota hit, retrying in {delay}s')
+                sleep(delay)
+                continue
+            raise
+
+
 def send_log_request(url, pb_hash, tag, headers, data):
     """
     Send a log request to the logs API
@@ -164,22 +181,22 @@ def update_data(ws, df, range):
     """
 
     if range == "A1":
-        ws.clear()
+        _retry_on_quota(ws.clear)
     else:
-        ws.batch_clear([range])
+        _retry_on_quota(ws.batch_clear, [range])
 
-    ws.update(range_name=range, values=[df.columns.values.tolist()] + df.values.tolist())
+    _retry_on_quota(ws.update, range_name=range, values=[df.columns.values.tolist()] + df.values.tolist())
 
     if range != "A1":
-        ws.update(range_name="A16", values=[["Writes your notes below this line..."]])
-        ws.format("A16:F16", {
+        _retry_on_quota(ws.update, range_name="A16", values=[["Writes your notes below this line..."]])
+        _retry_on_quota(ws.format, "A16:F16", {
             "backgroundColor": {
                 "red": 1.0,
                 "green": 1.0,
                 "blue": 0.0
             }
         })
-        ws.format('A16', {"verticalAlignment": "TOP",
+        _retry_on_quota(ws.format, 'A16', {"verticalAlignment": "TOP",
                           "wrapStrategy": "OVERFLOW_CELL"})
 
 
@@ -434,8 +451,8 @@ def upd_logs_google_sheet(gc, ndays):
     if not ws:
         log('error', 'Log sheet not found')
         return
-    ws.clear()
-    ws.update(range_name="A1", values=all_rows)
+    _retry_on_quota(ws.clear)
+    _retry_on_quota(ws.update, range_name="A1", values=all_rows)
     log('info', 'Logs updated to Google Sheet')
 
 
@@ -532,7 +549,7 @@ def upd_activities_to_google_sheet(gc):
         try:
             ws = wb.worksheet(activity.title)
         except gspread.exceptions.WorksheetNotFound:
-            ws = wb.add_worksheet(activity.title, 100, 20)
+            ws = _retry_on_quota(wb.add_worksheet, activity.title, 100, 20)
 
         # filter the groups on the current activity
         df_sub_groups = df_groups[df_groups['stageId'] == activity._id]
@@ -540,11 +557,11 @@ def upd_activities_to_google_sheet(gc):
         df_sub_groups = df_sub_groups.apply(fmt_musicians, args=(activity, df_participants), axis=1)
         data = df_sub_groups[columns]
         update_data(ws, data, "A1:G15")
-        ws.format("A1:G15", {
+        _retry_on_quota(ws.format, "A1:G15", {
             "verticalAlignment": "TOP",
             "wrapStrategy": "WRAP",
         })
-        gf.set_column_widths(ws, [('C', 250), ('D', 400), ('E', 300), ('G', 750)])
+        _retry_on_quota(gf.set_column_widths, ws, [('C', 250), ('D', 400), ('E', 300), ('G', 750)])
 
         sleep(3)
 

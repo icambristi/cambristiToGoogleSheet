@@ -1,8 +1,47 @@
 from unittest.mock import MagicMock, patch
 
 import gspread
+import pytest
 
 import writeGoogleSheet as wgs
+
+
+def _api_error_429():
+    resp = MagicMock()
+    resp.json.return_value = {"error": {"code": 429, "message": "quota exceeded", "status": "RESOURCE_EXHAUSTED"}}
+    return gspread.exceptions.APIError(resp)
+
+
+def _api_error_500():
+    resp = MagicMock()
+    resp.json.return_value = {"error": {"code": 500, "message": "server error", "status": "INTERNAL"}}
+    return gspread.exceptions.APIError(resp)
+
+
+def test_retry_on_quota_returns_result_on_first_success():
+    fn = MagicMock(return_value="ok")
+    assert wgs._retry_on_quota(fn, "a", b=1) == "ok"
+    fn.assert_called_once_with("a", b=1)
+
+
+def test_retry_on_quota_retries_on_429_then_succeeds():
+    fn = MagicMock(side_effect=[_api_error_429(), _api_error_429(), "ok"])
+    assert wgs._retry_on_quota(fn, max_tries=5, base_delay=0) == "ok"
+    assert fn.call_count == 3
+
+
+def test_retry_on_quota_gives_up_after_max_tries():
+    fn = MagicMock(side_effect=_api_error_429())
+    with pytest.raises(gspread.exceptions.APIError):
+        wgs._retry_on_quota(fn, max_tries=3, base_delay=0)
+    assert fn.call_count == 3
+
+
+def test_retry_on_quota_reraises_non_429_immediately():
+    fn = MagicMock(side_effect=_api_error_500())
+    with pytest.raises(gspread.exceptions.APIError):
+        wgs._retry_on_quota(fn, max_tries=5, base_delay=0)
+    fn.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
