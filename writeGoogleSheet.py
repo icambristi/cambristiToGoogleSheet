@@ -563,7 +563,7 @@ def upd_activities_to_google_sheet(gc):
         })
         _retry_on_quota(gf.set_column_widths, ws, [('C', 250), ('D', 400), ('E', 300), ('G', 750)])
 
-        sleep(3)
+        sleep(5)
 
     log('info', 'Activities Sheet updated to Google Sheet')
 
