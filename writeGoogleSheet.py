@@ -58,6 +58,10 @@ def log(severity, msg):
         logging.error(f"Invalid severity level: {severity}")
         logging.info(msg)
 
+
+25
+
+
 def _retry_on_quota(fn, *args, max_tries=6, base_delay=15, **kwargs):
     """
     Call a gspread write method, retrying with backoff if the Sheets API
@@ -461,8 +465,10 @@ def fmt_musicians(gr, act, df_participants):
     for m in eval(gr.musicians):
         p = df_participants[(df_participants['memberId'] == m) & (df_participants['stageId'] == act._id)]
         if len(p) > 0:
-            paid = ' [25€] ' if (p.isCotiPaid.values[0] == "False") else ' [ ok ] '
+            paid = ' [30€] ' if (p.isCotiPaid.values[0] == "False") else ' [ ok ] '
             mbr = ' [Mbre] ' if (p.member.values[0] == "True") else ' [Extrn] '
+            if ('Ext' in p.member.values[0]):
+                paid = ' [25€] '
             mlist += mbr + paid + p.participantName.values[0] + ' (' + p.participantEmail.values[
                 0] + ') ' + ', ' + \
                      p.instrument.values[0] + '\n'
