@@ -47,7 +47,6 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: true
           exit-code: 0
-          skip-version-check: true
 
       - name: Upload scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3

@@ -464,7 +464,7 @@ def fmt_musicians(gr, act, df_participants):
         if len(p) > 0:
             paid = ' [30€] ' if (p.isCotiPaid.values[0] == "False") else ' [ ok ] '
             mbr = ' [Mbre] ' if (p.member.values[0] == "True") else ' [Extrn] '
-            if ('Ext' in p.member.values[0]):
+            if 'Ext' in mbr:
                 paid = ' [25€] '
             mlist += mbr + paid + p.participantName.values[0] + ' (' + p.participantEmail.values[
                 0] + ') ' + ', ' + \
