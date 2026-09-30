@@ -59,9 +59,6 @@ def log(severity, msg):
         logging.info(msg)
 
 
-25
-
-
 def _retry_on_quota(fn, *args, max_tries=6, base_delay=15, **kwargs):
     """
     Call a gspread write method, retrying with backoff if the Sheets API
