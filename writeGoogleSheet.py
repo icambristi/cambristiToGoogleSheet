@@ -640,10 +640,10 @@ if __name__ == '__main__':
     if args.log:
         if args.days:
             days = args.days
-        elif 'logs' in config and 'days' in config['logs']:
-            days = config['logs']['days']
+        elif 'logs' in config and 'ndays' in config['logs']:
+            days = config['logs']['ndays']
         else:
-            days = 7
+            days = 15
         t = threading.Thread(target=upd_logs_google_sheet, args=(gc, days))
         threads.append(t)
 
