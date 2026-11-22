@@ -3,7 +3,7 @@ name = "wixdbmemberstogooglesheet"
 version = "0.1.4"
 description = "Dump I Cambristi WIX CMS data to some google documents"
 requires-python = ">=3.14"
-dependencies = ["pytest (>=9.0.3,<10.0.0)", "ruff (>=0.15.11,<0.16.0)", "pyright (>=1.1.408,<2.0.0)", "mypy (>=1.20.2,<2.0.0)"]
+dependencies = ["pytest (>=9.0.3,<10.0.0)", "ruff (>=0.15.11,<0.16.0)", "pyright (>=1.1.408,<2.0.0)", "mypy (>=1.20.2,<3.0.0)"]
 
 [poetry]
 package-mode = false
